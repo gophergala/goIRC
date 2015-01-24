@@ -7,12 +7,14 @@ import (
 type EventType int
 
 const (
-	EventSay EventType = iota
-	EventLeave
+	ChannelUserJoin EventType = iota
+	ChannelUserPart
+	ChannelPrivMsg
 )
 
 type EventBus struct {
-	subscribers []*Subscriber
+	subscribers map[EventType][]*Subscriber
+	channel     *Channel
 }
 
 type Event struct {
@@ -24,40 +26,49 @@ type Subscriber struct {
 	name string
 }
 
+type Channel struct {
+	name  string
+	topic string
+}
+
 func (s *Subscriber) OnEvent(event *Event) {
 	switch event.event_type {
-	case EventSay:
+	case ChannelUserJoin:
 		fmt.Printf("%q(%d)> %q\n", s.name, event.event_type, event.event_data)
-	case EventLeave:
-		fmt.Printf("%q(%d)> LEAVING!!!\n", s.name, event.event_type)
 	}
 }
 
 func (bus *EventBus) Publish(event *Event) {
 	fmt.Printf("\npublishing -%d- data: %q\n", event.event_type, event.event_data)
-	for _, subscriber := range bus.subscribers {
+	for _, subscriber := range bus.subscribers[event.event_type] {
 		subscriber.OnEvent(event) //currently slower than without the goroutine
 	}
 	fmt.Println("done publishing")
 }
 
-func (bus *EventBus) Subscribe(subscriber *Subscriber) {
-	bus.subscribers = append(bus.subscribers, subscriber)
+func (bus *EventBus) Subscribe(event_type EventType, subscriber *Subscriber) {
+	bus.subscribers[event_type] = append(bus.subscribers[event_type], subscriber)
 }
 
 func main() {
 
-	bus := EventBus{}
-	sub := Subscriber{name: "a_client"}
-	bus.Subscribe(&sub)
+	gophers := Channel{name: "#gophers", topic: "gogo gophergala!"}
 
-	e := Event{event_type: EventSay, event_data: "hello, world"}
+	buses := make(map[string]EventBus)
+	buses["#gophers"] = EventBus{channel: &gophers}
+	fmt.Println("name: " + buses["#gophers"].channel.name) // bus := EventBus{}
+	sub := Subscriber{name: "a_client"}
+	var b EventBus //go can't infer buses["key"] is an EventBus?
+	b = buses["#gophers"]
+	b.Subscribe(ChannelUserJoin, &sub)
+
+	// e := Event{event_type: EventSay, event_data: "hello, world"}
 
 	for i := 0; i < 10; i++ {
 		s := Subscriber{name: fmt.Sprintf("client_%v", i)}
-		bus.Subscribe(&s)
+		b.Subscribe(ChannelUserJoin, &s)
 	}
-
-	bus.Publish(&e)
-	bus.Publish(&Event{event_type: EventLeave})
+	e := Event{event_type: ChannelUserJoin, event_data: "Alvin has joined!"}
+	b.Publish(&e)
+	// bus.Publish(&Event{event_type: EventLeave})
 }
