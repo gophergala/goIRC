@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"net"
 )
 
 type EventType int
@@ -50,6 +52,17 @@ func (bus *EventBus) Subscribe(event_type EventType, subscriber *Subscriber) {
 	bus.subscribers[event_type] = append(bus.subscribers[event_type], subscriber)
 }
 
+func handleConnection(conn net.Conn) {
+	for {
+		status, err := bufio.NewReader(conn).ReadString('\n')
+		if err != nil {
+			panic("OH NOEESssss")
+		} else {
+			fmt.Println(status)
+		}
+
+	}
+}
 func main() {
 
 	gophers := Channel{name: "#gophers", topic: "gogo gophergala!"}
@@ -71,4 +84,16 @@ func main() {
 	e := Event{event_type: ChannelUserJoin, event_data: "Alvin has joined!"}
 	b.Publish(&e)
 	// bus.Publish(&Event{event_type: EventLeave})
+	ln, err := net.Listen("tcp", ":3030")
+	if err != nil {
+		panic("Listen not WORKING SHIET")
+	}
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			panic("ahhh SHIT")
+		}
+		handleConnection(conn)
+	}
+
 }
