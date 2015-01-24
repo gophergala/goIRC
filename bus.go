@@ -27,6 +27,7 @@ type Event struct {
 
 type Subscriber struct {
 	Nick string
+	conn net.Conn
 }
 
 type Channel struct {
@@ -39,25 +40,25 @@ type Channel struct {
 // 	OnEvent(event *Event)
 // }
 
-func (s *Subscriber) OnEvent(event *Event, conn net.Conn) {
+func (s *Subscriber) OnEvent(event *Event) {
 	switch event.event_type {
 	case ChannelUserJoin:
 		//fmt.Printf("%q(%d)> %q\n", s.Nick, event.event_type, event.event_data)
-		_, err := conn.Write([]byte(s.Nick + " joined " + event.event_data))
+		_, err := s.conn.Write([]byte(s.Nick + " joined " + event.event_data))
 		if err != nil {
 			fmt.Println("Not looking too good")
 		}
 	case ChannelMsg:
-		_, err := conn.Write([]byte(event.event_data))
+		_, err := s.conn.Write([]byte(event.event_data))
 		if err != nil {
 			fmt.Println("Not looking too good")
 		}
 	}
 }
-func (bus *EventBus) Publish(event *Event, conn net.Conn) {
+func (bus *EventBus) Publish(event *Event) {
 	fmt.Printf("\npublishing -%d- data: %q\n", event.event_type, event.event_data)
 	for _, subscriber := range bus.subscribers[event.event_type] {
-		subscriber.OnEvent(event, conn) //currently slower than without the goroutine
+		subscriber.OnEvent(event) //currently slower than without the goroutine
 	}
 	fmt.Println("done publishing")
 }
@@ -67,6 +68,7 @@ func (bus *EventBus) Subscribe(event_type EventType, subscriber *Subscriber) {
 }
 
 func handleConnection(conn net.Conn) {
+	var client Subscriber
 	for {
 		status, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
@@ -80,12 +82,14 @@ func handleConnection(conn net.Conn) {
 		// this does not realy work...
 		switch cmd {
 		case "JOIN":
+			client = Subscriber{Nick: data, conn: conn}
 			b := buses[target]
-			b.Subscribe(ChannelUserJoin, &Subscriber{Nick: data})
-			b.Publish(&Event{ChannelUserJoin, target}, conn)
+			b.Subscribe(ChannelUserJoin, &client)
+			b.Publish(&Event{ChannelUserJoin, target})
 		case "MSG":
 			b := buses[target]
-			b.Publish(&Event{ChannelMsg, data}, conn)
+			b.Subscribe(ChannelMsg, &client)
+			b.Publish(&Event{ChannelMsg, data})
 		}
 		// this just echos whatever is sent over
 		//n, err := conn.Write([]byte(status))
