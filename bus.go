@@ -44,7 +44,7 @@ func (s *Subscriber) OnEvent(event *Event) {
 	switch event.event_type {
 	case ChannelUserJoin:
 		//fmt.Printf("%q(%d)> %q\n", s.Nick, event.event_type, event.event_data)
-		_, err := s.conn.Write([]byte(s.Nick + " joined " + event.event_data))
+		_, err := s.conn.Write([]byte(event.event_data))
 		if err != nil {
 			fmt.Println("Not looking too good")
 		}
@@ -85,11 +85,13 @@ func handleConnection(conn net.Conn) {
 			client = Subscriber{Nick: data, conn: conn}
 			b := buses[target]
 			b.Subscribe(ChannelUserJoin, &client)
-			b.Publish(&Event{ChannelUserJoin, target})
+			b.Subscribe(ChannelMsg, &client)
+			message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
+			b.Publish(&Event{ChannelUserJoin, message})
 		case "MSG":
 			b := buses[target]
-			b.Subscribe(ChannelMsg, &client)
-			b.Publish(&Event{ChannelMsg, data})
+			message := fmt.Sprintf("%s: %s\n", client.Nick, data)
+			b.Publish(&Event{ChannelMsg, message})
 		}
 		// this just echos whatever is sent over
 		//n, err := conn.Write([]byte(status))
