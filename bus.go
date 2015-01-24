@@ -75,17 +75,26 @@ func handleConnection(conn net.Conn) {
 			panic("OH NOEESssss")
 		}
 		var cmd, target, data string
-		n, err := fmt.Sscanf(status, "%s %s %q", &cmd, &target, &data)
-		fmt.Println(n)
-		fmt.Println(cmd, target, data)
 
-		// this does not realy work...
+		// split <command> <target>:<data>
+		s := strings.SplitN(status, ":", 2)
+		_, err = fmt.Sscanf(s[0], "%s %s", &cmd, &target)
+		if err != nil {
+			panic(err)
+		}
+		data = s[1]
+
 		switch cmd {
 		case "JOIN":
+			b, ok := buses[target]
+			if !ok {
+				// need to add channel
+			}
+
 			client = Subscriber{Nick: data, conn: conn}
-			b := buses[target]
 			b.Subscribe(ChannelUserJoin, &client)
 			b.Subscribe(ChannelMsg, &client)
+
 			message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
 			b.Publish(&Event{ChannelUserJoin, message})
 		case "MSG":
@@ -93,12 +102,6 @@ func handleConnection(conn net.Conn) {
 			message := fmt.Sprintf("%s: %s\n", client.Nick, data)
 			b.Publish(&Event{ChannelMsg, message})
 		}
-		// this just echos whatever is sent over
-		//n, err := conn.Write([]byte(status))
-		// if err != nil {
-		// 	fmt.Println("Not looking too good")
-		// }
-		// fmt.Println(n)
 	}
 }
 
