@@ -1,10 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"net"
-	"sync"
+	_ "sync"
 )
 
 type EventType int
@@ -15,10 +14,6 @@ const (
 	ChannelPrivMsg
 	ChannelMsg
 )
-
-type MasterBus struct {
-	buses map[string]EventBus
-}
 
 type Subscriber interface {
 	OnEvent(*Event)
@@ -34,38 +29,21 @@ type Event struct {
 	event_data string
 }
 
-type User struct {
-	Nick     string
-	Ident    string
-	RealName string
-	Conn     net.Conn
-	Status   ConnectionStatus
-}
-
 type Channel struct {
 	name  string
 	topic string
-}
-
-// something funky going on here
-// type Subscriber interface {
-// 	OnEvent(event *Event)
-// }
-
-func (b *MasterBus) addBus(target string) {
-	var mutex
 }
 
 func (u *User) OnEvent(event *Event) {
 	switch event.event_type {
 	case ChannelUserJoin:
 		//fmt.Printf("%q(%d)> %q\n", s.Nick, event.event_type, event.event_data)
-		_, err := u.conn.Write([]byte(event.event_data))
+		_, err := u.Conn.Write([]byte(event.event_data))
 		if err != nil {
 			fmt.Println("Not looking too good")
 		}
 	case ChannelMsg:
-		_, err := u.conn.Write([]byte(event.event_data))
+		_, err := u.Conn.Write([]byte(event.event_data))
 		if err != nil {
 			fmt.Println("Not looking too good")
 		}
@@ -106,7 +84,7 @@ func main() {
 		if err != nil {
 			panic("nope not Accepting")
 		}
-		go handleConnection(conn)
+		go handleConnection(conn, buses)
 	}
 
 }
