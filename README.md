@@ -11,7 +11,7 @@
  1. MSG #<Channel Name>:<Message> 
 
 ### Local Steps
- 1. go run bus.go connection.go
+ 1. go run bus.go connection.go help.go
  2. telnet localhost 3030
  3. PASS <your nick>
  4. JOIN #gophers:
