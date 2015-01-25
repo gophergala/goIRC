@@ -88,6 +88,10 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 	}
 }
 
+func handlePart(buses map[string]*EventBus, client *User, target string, data string) {
+
+}
+
 func handleJoin(buses map[string]*EventBus, client *User, target string, data string) {
 	fmt.Println("!!!!!!!!! JOIN")
 	b, ok := buses[target]
@@ -115,7 +119,7 @@ func handleMsg(buses map[string]*EventBus, client *User, target string, data str
 		client.Conn.Write([]byte("Channel does not exist\n"))
 	}
 	// implment check if client is subscribed to channel here
-	message := fmt.Sprintf("%s: %s\n", client.Nick, data)
+	message := fmt.Sprintf("(%s)%s: %s\n", target, client.Nick, data)
 	b.Publish(&Event{PrivMsg, message})
 
 }
