@@ -15,8 +15,12 @@ const (
 	PrivMsg
 )
 
+type Subscriber interface {
+	OnEvent(*Event)
+}
+
 type EventBus struct {
-	subscribers map[EventType][]*Subscriber
+	subscribers map[EventType][]Subscriber
 	channel     *Channel
 }
 
@@ -25,26 +29,24 @@ type Event struct {
 	event_data string
 }
 
-type Subscriber struct {
-	Nick string
-	conn net.Conn
-}
-
 type Channel struct {
 	name  string
 	topic string
 }
 
-// something funky going on
-// type Subscriber interface {
-// 	OnEvent(event *Event)
-// }
+type User struct {
+	Nick     string
+	Ident    string
+	RealName string
+	Conn     net.Conn
+	Status   ConnectionStatus
+}
 
-func (s *Subscriber) OnEvent(event *Event) {
+func (u *User) OnEvent(event *Event) {
 	switch event.event_type {
 	case UserJoin:
 		//fmt.Printf("%q(%d)> %q\n", s.Nick, event.event_type, event.event_data)
-		_, err := s.conn.Write([]byte(event.event_data))
+		_, err := u.Conn.Write([]byte(event.event_data))
 		if err != nil {
 			fmt.Println("Not looking too good")
 		}
@@ -58,17 +60,17 @@ func (s *Subscriber) OnEvent(event *Event) {
 func (bus *EventBus) Publish(event *Event) {
 	fmt.Printf("\npublishing -%d- data: %q\n", event.event_type, event.event_data)
 	for _, subscriber := range bus.subscribers[event.event_type] {
-		subscriber.OnEvent(event) //currently slower than without the goroutine
+		go subscriber.OnEvent(event) //currently slower than without the goroutine
 	}
 	fmt.Println("done publishing")
 }
 
-func (bus *EventBus) Subscribe(event_type EventType, subscriber *Subscriber) {
+func (bus *EventBus) Subscribe(event_type EventType, subscriber Subscriber) {
 	bus.subscribers[event_type] = append(bus.subscribers[event_type], subscriber)
 }
 
 func handleConnection(conn net.Conn, buses map[string]*EventBus) {
-	var client Subscriber
+	var client User
 	for {
 		status, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
@@ -98,12 +100,12 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 			if !ok {
 				// need to add support for channel topic
 				newChannel := Channel{name: target, topic: "gogo new channel!"}
-				buses[newChannel.name] = &EventBus{make(map[EventType][]*Subscriber), &newChannel}
+				buses[newChannel.name] = &EventBus{make(map[EventType][]Subscriber), &newChannel}
 				b = buses[newChannel.name]
 			}
 			data = data[:len(data)-2]
 			fmt.Println(data)
-			client = Subscriber{Nick: data, conn: conn}
+			client = User{Nick: data, conn: conn}
 			b.Subscribe(UserJoin, &client)
 			b.Subscribe(PrivMsg, &client)
 
@@ -146,6 +148,7 @@ func init() {
 	//b.Publish(&e)
 	// bus.Publish(&Event{event_type: EventLeave})
 }
+
 func main() {
 	// init event bus map
 	buses := make(map[string]*EventBus)
