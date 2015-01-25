@@ -16,6 +16,7 @@ const (
 
 type Subscriber interface {
 	OnEvent(*Event)
+	GetInfo() string
 }
 
 type EventBus struct {
@@ -31,6 +32,14 @@ type Event struct {
 type Channel struct {
 	name  string
 	topic string
+}
+
+func (u *User) GetInfo() string {
+	return u.Nick
+}
+
+func (c *Channel) GetInfo() string {
+	return c.name
 }
 
 func (u *User) OnEvent(event *Event) {
@@ -58,6 +67,26 @@ func (bus *EventBus) Publish(event *Event) {
 
 func (bus *EventBus) Subscribe(event_type EventType, subscriber Subscriber) {
 	bus.subscribers[event_type] = append(bus.subscribers[event_type], subscriber)
+}
+
+func (bus *EventBus) Unsubscribe(event_type EventType, subscriber Subscriber) {
+	//find the index
+
+	i := -1
+
+	for index, val := range bus.subscribers[event_type] {
+		if val.GetInfo() == subscriber.GetInfo() {
+			i = index
+			break
+		}
+	}
+
+	if i > -1 { //we found someone
+		cur := bus.subscribers[event_type]
+		endIndex := i + 1 //will break if index is last element!
+		cur = append(cur[0:i], cur[endIndex:]...)
+	}
+
 }
 
 var buses map[string]*EventBus
