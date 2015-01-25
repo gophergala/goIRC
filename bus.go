@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	// _ "sync"
 )
 
 type EventType int
@@ -39,7 +40,7 @@ type User struct {
 	Ident    string
 	RealName string
 	Conn     net.Conn
-	Status   ConnectionStatus
+	// Status   ConnectionStatus
 }
 
 func (u *User) OnEvent(event *Event) {
@@ -51,7 +52,7 @@ func (u *User) OnEvent(event *Event) {
 			fmt.Println("Not looking too good")
 		}
 	case PrivMsg:
-		_, err := s.conn.Write([]byte(event.event_data))
+		_, err := u.Conn.Write([]byte(event.event_data))
 		if err != nil {
 			fmt.Println("Not looking too good")
 		}
@@ -69,10 +70,10 @@ func (bus *EventBus) Subscribe(event_type EventType, subscriber Subscriber) {
 	bus.subscribers[event_type] = append(bus.subscribers[event_type], subscriber)
 }
 
-func handleConnection(conn net.Conn, buses map[string]*EventBus) {
+func handleConnection(Conn net.Conn, buses map[string]*EventBus) {
 	var client User
 	for {
-		status, err := bufio.NewReader(conn).ReadString('\n')
+		status, err := bufio.NewReader(Conn).ReadString('\n')
 		if err != nil {
 			panic("OH NOEESssss")
 		}
@@ -83,14 +84,14 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 		_, err = fmt.Sscanf(s[0], "%s %s", &cmd, &target)
 		if err != nil {
 			fmt.Println(err)
-			conn.Write([]byte("Invalid input! CHECK YOUR(self) SYNTAX\n"))
+			Conn.Write([]byte("Invalid input! CHECK YOUR(self) SYNTAX\n"))
 			continue
 		}
 		fmt.Println(len(s))
 		if len(s) == 2 {
 			data = s[1]
 		} else {
-			conn.Write([]byte("SYNTAX...PLEASE....\n"))
+			Conn.Write([]byte("SYNTAX...PLEASE....\n"))
 			continue
 		}
 
@@ -105,7 +106,7 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 			}
 			data = data[:len(data)-2]
 			fmt.Println(data)
-			client = User{Nick: data, conn: conn}
+			client = User{Nick: data, Conn: Conn}
 			b.Subscribe(UserJoin, &client)
 			b.Subscribe(PrivMsg, &client)
 
@@ -114,13 +115,13 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 		case "MSG":
 			b, ok := buses[target]
 			if !ok {
-				conn.Write([]byte("Channel does not exist\n"))
+				Conn.Write([]byte("Channel does not exist\n"))
 			}
 			// implment check if client is subscribed to channel here
 			message := fmt.Sprintf("%s: %s", client.Nick, data)
 			b.Publish(&Event{PrivMsg, message})
 		default:
-			conn.Write([]byte("No Command match\n"))
+			Conn.Write([]byte("No Command match\n"))
 		}
 	}
 }
