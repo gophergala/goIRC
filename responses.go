@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 var canned_responses map[int]string
 
 const HOST_STRING = "goirc.capitalonelabs.com"
@@ -35,6 +37,9 @@ func loadMessages() {
 	canned_responses[ERR_NOSUCHNICK] = "400 %q :no such nick"
 	canned_responses[ERR_NOSUCHCHANNEL] = "403 %q :no such channel"
 	canned_responses[ERR_CANNOTSENDTOCHAN] = "404 %q cannot send to channel"
+	for i, v := range canned_responses {
+		canned_responses[i] = fmt.Sprintf(v, HOST_STRING)
+	}
 }
 
 func sendWelcome(user *User) {
