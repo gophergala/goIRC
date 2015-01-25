@@ -31,7 +31,7 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 
 	commands := make(map[string]func(map[string]*EventBus, *User, string, string))
 	commands["JOIN"] = handleJoin
-	commands["MSG"] = handleMsg
+	commands["PRIVMSG"] = handleMsg
 	commands["NICK"] = handleNick
 
 	for {
