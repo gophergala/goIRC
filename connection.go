@@ -37,7 +37,7 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 	for {
 		status, err := reader.ReadString('\n')
 		if err != nil {
-			panic(err)
+			return
 		}
 
 		status = strings.TrimSpace(status)
