@@ -53,13 +53,14 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 			continue
 		} else if len(statLen) < 2 {
 			cmd := strings.SplitN(status, " ", 1)
+			cmd[0] = strings.ToUpper(cmd[0])
 			if _, ok := commands[cmd[0]]; ok {
 				commands[cmd[0]](buses, &client, "", "")
 			}
 		} else {
 			if client.Status < UserRegistered {
 				regCmd := strings.SplitN(status, " ", 2)
-
+				regCmd[0] = strings.ToUpper(regCmd[0])
 				switch regCmd[0] {
 				case "NICK":
 					//client.Nick = regCmd[1]
@@ -97,7 +98,7 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 					conn.Write([]byte("Invalid input! CHECK YOUR(self) SYNTAX\n"))
 					continue
 				}
-
+				cmd = strings.ToUpper(cmd)
 				if _, ok := commands[cmd]; ok {
 					commands[cmd](buses, &client, target, data)
 				}
@@ -108,10 +109,27 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 
 func handlePart(buses map[string]*EventBus, client *User, target string, data string) {
 	message := fmt.Sprintf("%s parted %s!\n", client.Nick, target)
+	b, ok := buses[target]
+	if !ok {
+		client.Conn.Write([]byte("Channel does not exist\n"))
+		return
+	}
+	_, ok = b.channel.mode[client.Nick]
+	if !ok {
+		client.Conn.Write([]byte("User not subscribed\n"))
+		return
+	}
 	buses[target].Publish(&Event{event_type: UserPart, event_data: message})
+	delete(b.channel.mode, client.Nick)
+
 	buses[target].Unsubscribe(UserPart, client)
 	buses[target].Unsubscribe(UserJoin, client)
+	buses[target].Unsubscribe(Topic, client)
 	buses[target].Unsubscribe(PrivMsg, client)
+	if len(b.channel.mode) == 0 {
+		delete(buses, target)
+		fmt.Println(target + " closed")
+	}
 }
 
 func handleJoin(buses map[string]*EventBus, client *User, target string, data string) {
