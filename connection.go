@@ -213,11 +213,12 @@ func handleList(buses map[string]*EventBus, client *User, target string, data st
 func handleHelp(buses map[string]*EventBus, client *User, target string, data string) {
 	k, ok := Help[target]
 	if !ok {
-		client.Conn.Write([]byte("Available Commands:\n"))
+		client.Conn.Write([]byte("\nAvailable Commands: (Enter HELP <command> for further details)\n"))
 		for h := range Help {
 			client.Conn.Write([]byte(h + "\n"))
 		}
+		client.Conn.Write([]byte("\n"))
 	} else {
-		client.Conn.Write([]byte("Summary: " + k.Summary + "\nUsage: " + k.Syntax + "\n"))
+		client.Conn.Write([]byte("Summary: " + k.Summary + "\nUsage: " + k.Syntax + "\n\n"))
 	}
 }

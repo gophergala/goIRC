@@ -21,12 +21,16 @@ var Help = map[string]HelpCommand{
 		Syntax:  "NICK <new_nick_here>",
 	},
 	"PASS": HelpCommand{
-		Summary: "~*~hidden command ~*~ short hand for registering and setting a username",
-		Syntax:  "PASS <username",
+		Summary: "~*~hidden command~*~ short hand for registering and setting a username",
+		Syntax:  "PASS <username>",
 	},
 	"TOPIC": HelpCommand{
 		Summary: "see the topic for a certain channel",
 		Syntax:  "TOPIC <#channel>: <your topic here>",
+	},
+	"LIST": HelpCommand{
+		Summary: "lists out all available channels to join",
+		Syntax:  "LIST",
 	},
 	// "USERS": HelpCommand{
 	// 	Summary: "get a list of all users in a channel",
