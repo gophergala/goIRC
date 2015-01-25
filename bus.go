@@ -111,6 +111,9 @@ func (bus *EventBus) Unsubscribe(event_type EventType, subscriber Subscriber) {
 
 var buses map[string]*EventBus
 
+func init() {
+	loadMessages()
+}
 func main() {
 	// init event bus map
 	buses := make(map[string]*EventBus)
