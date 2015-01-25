@@ -7,11 +7,19 @@ import (
 )
 
 type EventType int
+type Mode int
 
 const (
 	UserJoin EventType = iota
 	UserPart
 	PrivMsg
+	Topic
+)
+
+const (
+	Voice Mode = iota
+	Moderator
+	None
 )
 
 type Subscriber interface {
@@ -32,6 +40,7 @@ type Event struct {
 type Channel struct {
 	name  string
 	topic string
+	mode  map[string]Mode
 }
 
 func (u *User) GetInfo() string {
@@ -51,6 +60,11 @@ func (u *User) OnEvent(event *Event) {
 			fmt.Println("Not looking too good")
 		}
 	case PrivMsg:
+		_, err := u.Conn.Write([]byte(event.event_data))
+		if err != nil {
+			fmt.Println("Not looking too good")
+		}
+	case Topic:
 		_, err := u.Conn.Write([]byte(event.event_data))
 		if err != nil {
 			fmt.Println("Not looking too good")

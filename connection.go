@@ -31,6 +31,7 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 
 	commands := make(map[string]func(map[string]*EventBus, *User, string, string))
 	commands["JOIN"] = handleJoin
+	commands["TOPIC"] = handleTopic
 	commands["PRIVMSG"] = handleMsg
 	commands["NICK"] = handleNick
 	commands["HELP"] = handleHelp
@@ -105,17 +106,43 @@ func handleJoin(buses map[string]*EventBus, client *User, target string, data st
 	b, ok := buses[target]
 	if !ok {
 		// need to add support for channel topic
-		newChannel := Channel{name: target, topic: "gogo new channel!"}
+		newChannel := Channel{name: target, topic: "gogo new channel!", mode: make(map[string]Mode)}
 		buses[newChannel.name] = &EventBus{make(map[EventType][]Subscriber), &newChannel}
 		b = buses[newChannel.name]
 	}
-	b.Subscribe(UserJoin, client)
-	b.Subscribe(PrivMsg, client)
+	_, ok = b.channel.mode[client.Nick]
+	if !ok {
+		b.channel.mode[client.Nick] = Voice
+		b.Subscribe(UserJoin, client)
+		b.Subscribe(PrivMsg, client)
+		b.Subscribe(Topic, client)
+		message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
+		b.Publish(&Event{UserJoin, message})
+	} else {
+		client.Conn.Write([]byte("User is already subscribed\n"))
+	}
 
-	message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
-	b.Publish(&Event{UserJoin, message})
 }
-
+func handleTopic(buses map[string]*EventBus, client *User, target string, data string) {
+	b, ok := buses[target]
+	if !ok {
+		client.Conn.Write([]byte("Channel does not exist\n"))
+		return
+	}
+	_, ok = b.channel.mode[client.Nick]
+	if !ok {
+		client.Conn.Write([]byte("User not subscribed\n"))
+		return
+	}
+	if len(data) > 0 {
+		b.channel.topic = data
+		message := fmt.Sprintf("%s changed the channel topic to %s", client.Nick, data)
+		b.Publish(&Event{Topic, message})
+	} else {
+		message := fmt.Sprintf("%s\n", b.channel.topic)
+		client.Conn.Write([]byte(message))
+	}
+}
 func handleNick(buses map[string]*EventBus, client *User, target string, data string) {
 	client.Nick = target
 	client.Conn.Write([]byte("nick set to:" + client.Nick + "\n"))
@@ -125,6 +152,12 @@ func handleMsg(buses map[string]*EventBus, client *User, target string, data str
 	b, ok := buses[target]
 	if !ok {
 		client.Conn.Write([]byte("Channel does not exist\n"))
+		return
+	}
+	_, ok = b.channel.mode[client.Nick]
+	if !ok {
+		client.Conn.Write([]byte("User not subscribed\n"))
+		return
 	}
 	// implment check if client is subscribed to channel here
 	message := fmt.Sprintf("(%s)%s: %s\n", target, client.Nick, data)
