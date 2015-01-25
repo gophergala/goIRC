@@ -10,10 +10,9 @@ import (
 type EventType int
 
 const (
-	ChannelUserJoin EventType = iota
-	ChannelUserPart
-	ChannelPrivMsg
-	ChannelMsg
+	UserJoin EventType = iota
+	UserPart
+	PrivMsg
 )
 
 type EventBus struct {
@@ -43,13 +42,13 @@ type Channel struct {
 
 func (s *Subscriber) OnEvent(event *Event) {
 	switch event.event_type {
-	case ChannelUserJoin:
+	case UserJoin:
 		//fmt.Printf("%q(%d)> %q\n", s.Nick, event.event_type, event.event_data)
 		_, err := s.conn.Write([]byte(event.event_data))
 		if err != nil {
 			fmt.Println("Not looking too good")
 		}
-	case ChannelMsg:
+	case PrivMsg:
 		_, err := s.conn.Write([]byte(event.event_data))
 		if err != nil {
 			fmt.Println("Not looking too good")
@@ -81,9 +80,17 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 		s := strings.SplitN(status, ":", 2)
 		_, err = fmt.Sscanf(s[0], "%s %s", &cmd, &target)
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
+			conn.Write([]byte("Invalid input! CHECK YOUR(self) SYNTAX\n"))
+			continue
 		}
-		data = s[1]
+		fmt.Println(len(s))
+		if len(s) == 2 {
+			data = s[1]
+		} else {
+			conn.Write([]byte("SYNTAX...PLEASE....\n"))
+			continue
+		}
 
 		switch cmd {
 		case "JOIN":
@@ -97,15 +104,21 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 			data = data[:len(data)-2]
 			fmt.Println(data)
 			client = Subscriber{Nick: data, conn: conn}
-			b.Subscribe(ChannelUserJoin, &client)
-			b.Subscribe(ChannelMsg, &client)
+			b.Subscribe(UserJoin, &client)
+			b.Subscribe(PrivMsg, &client)
 
 			message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
-			b.Publish(&Event{ChannelUserJoin, message})
+			b.Publish(&Event{UserJoin, message})
 		case "MSG":
-			b := buses[target]
+			b, ok := buses[target]
+			if !ok {
+				conn.Write([]byte("Channel does not exist\n"))
+			}
+			// implment check if client is subscribed to channel here
 			message := fmt.Sprintf("%s: %s", client.Nick, data)
-			b.Publish(&Event{ChannelMsg, message})
+			b.Publish(&Event{PrivMsg, message})
+		default:
+			conn.Write([]byte("No Command match\n"))
 		}
 	}
 }
