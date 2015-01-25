@@ -34,6 +34,7 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 		if err != nil {
 			panic(err)
 		}
+		status = strings.TrimSpace(status)
 
 		if client.Status < UserRegistered {
 			regCmd := strings.Split(status, " ")
@@ -76,8 +77,6 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 					buses[newChannel.name] = &EventBus{make(map[EventType][]Subscriber), &newChannel}
 					b = buses[newChannel.name]
 				}
-				data = data[:len(data)-2]
-				fmt.Println(data)
 				b.Subscribe(UserJoin, &client)
 				b.Subscribe(PrivMsg, &client)
 
