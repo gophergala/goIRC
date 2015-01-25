@@ -34,19 +34,19 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 			panic("OH NOEESssss")
 		}
 
-		regCmd := strings.Split(status, " ")
+		if client.Status != UserRegistered {
+			regCmd := strings.Split(status, " ")
 
-		if client.Status < UserRegistered {
 			switch regCmd[0] {
 			case "NICK":
+				client.Status = UserRegistered
+
 				client.Nick = regCmd[1]
 				conn.Write([]byte("welcome " + client.Nick + "\r\n"))
-
-				if client.Status >= UserPassSent {
-					client.Status = UserRegistered
-				}
+				//if client.Status == UserPassSent {
+			//}
 			default:
-				conn.Write([]byte("you must register first. try nick?"))
+				conn.Write([]byte("you must register first. try nick?\n"))
 			}
 
 		} else {
@@ -61,24 +61,18 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 
 			switch cmd {
 			case "JOIN":
-				client = User{Nick: data, Conn: conn}
 				b := buses[target]
 				b.Subscribe(ChannelUserJoin, &client)
 				b.Subscribe(ChannelMsg, &client)
 				message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
 				b.Publish(&Event{ChannelUserJoin, message})
+				fmt.Println("JOIN CASE WAS HIT!!!!!!!!!!!!")
 			case "MSG":
 				b := buses[target]
 				message := fmt.Sprintf("%s: %s\n", client.Nick, data)
 				b.Publish(&Event{ChannelMsg, message})
+				fmt.Println("MSG WAS HIT!!!!!")
 			}
-			//}
-			// this just echos whatever is sent over
-			//n, err := conn.Write([]byte(status))
-			// if err != nil {
-			// 	fmt.Println("Not looking too good")
-			// }
-			// fmt.Println(n)
 		}
 	}
 }
