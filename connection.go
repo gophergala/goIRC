@@ -126,6 +126,7 @@ func handlePart(buses map[string]*EventBus, client *User, target string, data st
 	buses[target].Unsubscribe(UserJoin, client)
 	buses[target].Unsubscribe(Topic, client)
 	buses[target].Unsubscribe(PrivMsg, client)
+	// possibile race condition
 	if len(b.channel.mode) == 0 {
 		delete(buses, target)
 		fmt.Println(target + " closed")
