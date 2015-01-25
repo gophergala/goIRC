@@ -166,7 +166,12 @@ func handleJoin(buses map[string]*EventBus, client *User, target string, data st
 		//message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
 		message := fmt.Sprintf("%q JOIN %q", client.getHead(), target)
 		//send names
-
+		var names string
+		for _, val := range buses[target].subscribers[PrivMsg] {
+			names = names + " " + val.GetInfo()
+		}
+		client.Write(":" + HOST_STRING + " 353 " + client.Nick + " " + target + " :" + names)
+		client.Write(":" + HOST_STRING + " 366 " + client.Nick + " * :END of /NAMES list.")
 		///end send names
 		b.Publish(&Event{UserJoin, message})
 	} else {
