@@ -114,15 +114,24 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 	}
 }
 
+func sendError(conn net.Conn, err string) {
+	conn.Write([]byte(err))
+}
+func checkEventBus(buses map[string]*EventBus, conn net.Conn, name string) (*EventBus, bool) {
+	if b, ok := buses[name]; !ok {
+		sendError(conn, canned_responses[ERR_NOSUCHCHANNEL])
+	}
+	return b, ok
+}
+
 func handlePart(buses map[string]*EventBus, client *User, target string, data string) {
 	message := fmt.Sprintf("%s parted %s!\n", client.Nick, target)
-	b, ok := buses[target]
-	if !ok {
-		client.Conn.Write([]byte("Channel does not exist\n"))
+
+	if b, ok := checkEventBus(buses, client.conn, target); !ok {
 		return
 	}
-	_, ok = b.channel.mode[client.Nick]
-	if !ok {
+
+	if _, ok = b.channel.mode[client.Nick]; !ok {
 		client.Conn.Write([]byte("User not subscribed\n"))
 		return
 	}
