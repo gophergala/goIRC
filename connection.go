@@ -29,6 +29,11 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 	client := User{Status: UserPassSent, Conn: conn}
 	reader := bufio.NewReader(conn)
 
+	commands := make(map[string]func(map[string]*EventBus, *User, string, string))
+	commands["JOIN"] = handleJoin
+	commands["MSG"] = handleMsg
+	commands["NICK"] = handleNick
+
 	for {
 		status, err := reader.ReadString('\n')
 		if err != nil {
@@ -41,8 +46,8 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 
 			switch regCmd[0] {
 			case "NICK":
-				client.Nick = regCmd[1]
-				conn.Write([]byte("welcome " + client.Nick + "\n"))
+				//client.Nick = regCmd[1]
+				handleNick(buses, &client, regCmd[1], "")
 				client.Status = UserNickSent
 			case "USER":
 				var uname, hname, sname, rname string
@@ -63,46 +68,54 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 
 		} else {
 			// split <command> <target> :<data>
+
 			var cmd, target, data string
 			s := strings.SplitN(status, ":", 2)
+			if len(s) > 1 {
+				data = s[1]
+			}
 			_, err = fmt.Sscanf(s[0], "%s %s", &cmd, &target)
 			if err != nil {
 				fmt.Println(err)
 				conn.Write([]byte("Invalid input! CHECK YOUR(self) SYNTAX\n"))
 				continue
 			}
-			switch cmd {
-			case "JOIN":
-				b, ok := buses[target]
-				if !ok {
-					// need to add support for channel topic
-					newChannel := Channel{name: target, topic: "gogo new channel!"}
-					buses[newChannel.name] = &EventBus{make(map[EventType][]Subscriber), &newChannel}
-					b = buses[newChannel.name]
-				}
-				b.Subscribe(UserJoin, &client)
-				b.Subscribe(PrivMsg, &client)
 
-				message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
-				b.Publish(&Event{UserJoin, message})
-			case "MSG":
-				if len(s) == 2 {
-					data = s[1]
-				} else {
-					conn.Write([]byte("No words? Speechless?\n"))
-					continue
-				}
-
-				b, ok := buses[target]
-				if !ok {
-					conn.Write([]byte("Channel does not exist\n"))
-				}
-				// implment check if client is subscribed to channel here
-				message := fmt.Sprintf("%s: %s\n", client.Nick, data)
-				b.Publish(&Event{PrivMsg, message})
-			default:
-				conn.Write([]byte("No Command match\n"))
+			if _, ok := commands[cmd]; ok {
+				commands[cmd](buses, &client, target, data)
 			}
 		}
 	}
+}
+
+func handleJoin(buses map[string]*EventBus, client *User, target string, data string) {
+	fmt.Println("!!!!!!!!! JOIN")
+	b, ok := buses[target]
+	if !ok {
+		// need to add support for channel topic
+		newChannel := Channel{name: target, topic: "gogo new channel!"}
+		buses[newChannel.name] = &EventBus{make(map[EventType][]Subscriber), &newChannel}
+		b = buses[newChannel.name]
+	}
+	b.Subscribe(UserJoin, client)
+	b.Subscribe(PrivMsg, client)
+
+	message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
+	b.Publish(&Event{UserJoin, message})
+}
+
+func handleNick(buses map[string]*EventBus, client *User, target string, data string) {
+	client.Nick = target
+	client.Conn.Write([]byte("nick set to:" + client.Nick + "\n"))
+}
+
+func handleMsg(buses map[string]*EventBus, client *User, target string, data string) {
+	b, ok := buses[target]
+	if !ok {
+		client.Conn.Write([]byte("Channel does not exist\n"))
+	}
+	// implment check if client is subscribed to channel here
+	message := fmt.Sprintf("%s: %s\n", client.Nick, data)
+	b.Publish(&Event{PrivMsg, message})
+
 }
