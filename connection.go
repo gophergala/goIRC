@@ -23,10 +23,17 @@ type User struct {
 	RealName string
 	Conn     net.Conn
 	Status   ConnectionStatus
+	Host     string
+}
+
+func (u *User) getHead() string {
+	//return fmt.Sprintf(":%s!%s@%s", u.Nick, u.Ident, u.Host)
+	return fmt.Sprintf(":%s!%s@127.0.0.1", u.Nick, u.Ident)
 }
 
 func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 	client := User{Status: UserPassSent, Conn: conn}
+	//myIP := net.Conn.RemoteAddr().String()
 	reader := bufio.NewReader(conn)
 
 	commands := make(map[string]func(map[string]*EventBus, *User, string, string))
@@ -73,22 +80,23 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 					client.Ident = uname
 					client.RealName = rname
 					client.Status = UserRegistered
-					fmt.Println("len: " + string(len(buses)))
 					buses[client.Nick] = &EventBus{subscribers: make(map[EventType][]Subscriber), channel: nil}
 					buses[client.Nick].Subscribe(PrivMsg, &client)
-					fmt.Println("len: " + string(len(buses)))
-
-				case "PASS":
+					sendWelcome(&client)
+				case "PASS": //need to remove this at some point!
 					client.Nick = regCmd[1]
 					client.Ident = regCmd[1]
 					client.RealName = regCmd[1]
+
 					buses[client.Nick] = &EventBus{subscribers: make(map[EventType][]Subscriber), channel: nil}
 					buses[client.Nick].Subscribe(PrivMsg, &client)
 					client.Status = UserRegistered
-					conn.Write([]byte("Welcome " + regCmd[1] + "\n"))
+					sendWelcome(&client)
+
+					//conn.Write([]byte("Welcome " + regCmd[1] + ")
 
 				default:
-					conn.Write([]byte("you must register first. try nick or user?\n"))
+					client.Write("you must register first. try nick or user?")
 				}
 
 			} else {
@@ -102,7 +110,7 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 				_, err = fmt.Sscanf(s[0], "%s %s", &cmd, &target)
 				if err != nil {
 					fmt.Println(err)
-					conn.Write([]byte("Invalid input! CHECK YOUR(self) SYNTAX\n"))
+					client.Write("Invalid input! CHECK YOUR(self) SYNTAX")
 					continue
 				}
 				cmd = strings.ToUpper(cmd)
@@ -114,25 +122,28 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 	}
 }
 
-func sendError(conn net.Conn, err string) {
-	conn.Write([]byte(err))
-}
-func checkEventBus(buses map[string]*EventBus, conn net.Conn, name string) (*EventBus, bool) {
-	if b, ok := buses[name]; !ok {
-		sendError(conn, canned_responses[ERR_NOSUCHCHANNEL])
+func checkEventBus(buses map[string]*EventBus, client *User, target string) (*EventBus, bool) {
+	b, ok := buses[target]
+	if !ok {
+		client.Write(canned_responses[ERR_NOSUCHCHANNEL])
 	}
 	return b, ok
+}
+func checkSubscribed(bus *EventBus, client *User) bool {
+	_, ok := bus.channel.mode[client.Nick]
+	if !ok {
+		client.Write(canned_responses[ERR_CANNOTSENDTOCHAN])
+	}
+	return ok
 }
 
 func handlePart(buses map[string]*EventBus, client *User, target string, data string) {
 	message := fmt.Sprintf("%s parted %s!\n", client.Nick, target)
-
-	if b, ok := checkEventBus(buses, client.conn, target); !ok {
+	b, ok := checkEventBus(buses, client, target)
+	if !ok {
 		return
 	}
-
-	if _, ok = b.channel.mode[client.Nick]; !ok {
-		client.Conn.Write([]byte("User not subscribed\n"))
+	if ok = checkSubscribed(b, client); !ok {
 		return
 	}
 	buses[target].Publish(&Event{event_type: UserPart, event_data: message})
@@ -164,21 +175,26 @@ func handleJoin(buses map[string]*EventBus, client *User, target string, data st
 		b.Subscribe(UserPart, client)
 		b.Subscribe(PrivMsg, client)
 		b.Subscribe(Topic, client)
-		message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
+		//message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
+		message := fmt.Sprintf("%q JOIN %q", client.getHead(), target)
+		//send names
+
+		///end send names
 		b.Publish(&Event{UserJoin, message})
 	} else {
-		client.Conn.Write([]byte("User is already subscribed\n"))
+		client.Write("User is already subscribed")
 	}
 }
 func handleTopic(buses map[string]*EventBus, client *User, target string, data string) {
 	b, ok := buses[target]
 	if !ok {
-		client.Conn.Write([]byte("Channel does not exist\n"))
+		//sendError(client, ERR_UNKNOWNERROR)
+		client.Write("Channel does not exist")
 		return
 	}
 	_, ok = b.channel.mode[client.Nick]
 	if !ok {
-		client.Conn.Write([]byte("User not subscribed\n"))
+		client.Write("User not subscribed")
 		return
 	}
 	if len(data) > 0 {
@@ -187,32 +203,30 @@ func handleTopic(buses map[string]*EventBus, client *User, target string, data s
 		b.Publish(&Event{Topic, message})
 	} else {
 		message := fmt.Sprintf("%s\n", b.channel.topic)
-		client.Conn.Write([]byte(message))
+		client.Write(message)
 	}
 }
 
 func handleNick(buses map[string]*EventBus, client *User, target string, data string) {
 	client.Nick = target
-	client.Conn.Write([]byte("nick set to:" + client.Nick + "\n"))
+	client.Write("nick set to:" + client.Nick)
 }
 
 func handleMsg(buses map[string]*EventBus, client *User, target string, data string) {
-	fmt.Println("len: " + string(len(buses)))
-
 	b, ok := buses[target]
 	if !ok {
-		client.Conn.Write([]byte("Channel does not exist\n"))
+		client.Write("Channel does not exist")
 		return
 	}
-	if b.channel != nil {
+	if b.channel != nil { //hacky but works for now
 		_, ok = b.channel.mode[client.Nick]
 		if !ok {
-			client.Conn.Write([]byte("User not subscribed\n"))
+			client.Write("User not subscribed")
 			return
 		}
 	}
-	// implment check if client is subscribed to channel here
-	message := fmt.Sprintf("(%s)%s: %s\n", target, client.Nick, data)
+	// implement check if client is subscribed to channel here
+	message := fmt.Sprintf("%s PRIVMSG %s: %s\n", client.getHead(), target, data)
 	b.Publish(&Event{event_type: PrivMsg, event_data: message})
 	buses[client.Nick].Publish(&Event{event_type: PrivMsg, event_data: message})
 
@@ -221,25 +235,24 @@ func handleMsg(buses map[string]*EventBus, client *User, target string, data str
 //func handleList(conn net.Conn, buses map[string]*EventBus) {
 func handleList(buses map[string]*EventBus, client *User, target string, data string) {
 	if len(buses) == 0 {
-		client.Conn.Write([]byte("No Channels Exist\n"))
+		client.Write("No Channels Exist")
 	} else {
-		client.Conn.Write([]byte("Channels\n"))
+		client.Write("Channels")
 		for k, _ := range buses {
-			client.Conn.Write([]byte(k))
+			client.Write(k)
 		}
-		client.Conn.Write([]byte("\n"))
+		client.Write("")
 	}
 }
 
 func handleHelp(buses map[string]*EventBus, client *User, target string, data string) {
 	k, ok := Help[target]
 	if !ok {
-		client.Conn.Write([]byte("\nAvailable Commands: (Enter HELP <command> for further details)\n"))
+		client.Write("\nAvailable Commands: (Enter HELP <command> for further details")
 		for h := range Help {
-			client.Conn.Write([]byte(h + "\n"))
+			client.Write(h)
 		}
-		client.Conn.Write([]byte("\n"))
 	} else {
-		client.Conn.Write([]byte("Summary: " + k.Summary + "\nUsage: " + k.Syntax + "\n\n"))
+		client.Write("Summary: " + k.Summary + "\r\nUsage: " + k.Syntax)
 	}
 }

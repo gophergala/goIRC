@@ -24,20 +24,33 @@ const (
 
 func loadMessages() {
 	canned_responses = make(map[int]string)
-	canned_responses[RPL_WELCOME] = "001 %q :Welcome to the Capital One Labs IRC Network %q"
-	canned_responses[RPL_YOURHOST] = "002 %q :Your host is goirc.capitalonelabs.com, running goIRC-0.0.1"
-	canned_responses[RPL_CREATED] = "003 %q :This server was created at some point in the past"
-	canned_responses[RPL_MYINFO] = "004 %q :some server modes go here or something"
-	canned_responses[RPL_ISUPPORT] = "005 %q :info about limits and so env variables will go here"
-	canned_responses[RPL_YOURID] = "006 %q :unique id goes here maybe? (ircnet)"
-	canned_responses[RPL_MOTDSTART] = "372 %q: we don't have an motd yet!!"
-	canned_responses[RPL_MOTD] = "375 %q :" + HOST_STRING + " message of the day"
-	canned_responses[RPL_ENDOFMOTD] = "376 %Q :end of motd"
-	canned_responses[ERR_UNKNOWNERROR] = "400 %q : unknown error"
-	canned_responses[ERR_NOSUCHNICK] = "400 %q :no such nick"
-	canned_responses[ERR_NOSUCHCHANNEL] = "403 %q :no such channel"
-	canned_responses[ERR_CANNOTSENDTOCHAN] = "404 %q cannot send to channel"
+	canned_responses[RPL_WELCOME] = "001 %s :Welcome to the Capital One Labs IRC Network %s"
+	canned_responses[RPL_YOURHOST] = "002 %s :Your host is goirc.capitalonelabs.com, running goIRC-0.0.1"
+	canned_responses[RPL_CREATED] = "003 %s :This server was created at some point in the past"
+	canned_responses[RPL_MYINFO] = "004 %s :some server modes go here or something"
+	canned_responses[RPL_ISUPPORT] = "005 %s :info about limits and so env variables will go here"
+	canned_responses[RPL_YOURID] = "006 %s :unique id goes here maybe? (ircnet)"
+	canned_responses[RPL_MOTDSTART] = "372 %s: we don't have an motd yet!!"
+	canned_responses[RPL_MOTD] = "375 %s :" + HOST_STRING + " message of the day"
+	canned_responses[RPL_ENDOFMOTD] = "376 %s :end of motd"
+	canned_responses[ERR_UNKNOWNERROR] = "400 %s : unknown error"
+	canned_responses[ERR_NOSUCHNICK] = "400 %s :no such nick"
+	canned_responses[ERR_NOSUCHCHANNEL] = "403 %s :no such channel"
+	canned_responses[ERR_CANNOTSENDTOCHAN] = "404 %s cannot send to channel"
 	for i, v := range canned_responses {
 		canned_responses[i] = fmt.Sprintf(v, HOST_STRING)
 	}
+}
+
+func sendWelcome(user *User) {
+	user.Write(canned_responses[RPL_WELCOME])
+	user.Write(canned_responses[RPL_CREATED])
+	user.Write(canned_responses[RPL_YOURHOST])
+	user.Write(canned_responses[RPL_MYINFO])
+	user.Write(canned_responses[RPL_ISUPPORT])
+	user.Write(canned_responses[RPL_YOURID])
+	user.Write(canned_responses[RPL_MOTDSTART])
+	user.Write(canned_responses[RPL_MOTD])
+	user.Write(canned_responses[RPL_ENDOFMOTD])
+
 }
