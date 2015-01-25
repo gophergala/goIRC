@@ -132,7 +132,7 @@ func checkEventBus(buses map[string]*EventBus, client *User, target string) (*Ev
 func checkSubscribed(bus *EventBus, client *User) bool {
 	_, ok := bus.channel.mode[client.Nick]
 	if !ok {
-		client.Write(canned_responses[ERR_CANNOTSENDTOCHAN])
+		client.Write(FAILSILENTLYSWANDIVE)
 	}
 	return ok
 }
