@@ -27,12 +27,13 @@ type User struct {
 }
 
 func (u *User) getHead() string {
-	return fmt.Sprintf(":%s!%s@%s", u.Nick, u.Ident, u.Host)
+	//return fmt.Sprintf(":%s!%s@%s", u.Nick, u.Ident, u.Host)
+	return fmt.Sprintf(":%s!%s@127.0.0.1", u.Nick, u.Ident)
 }
 
 func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 	client := User{Status: UserPassSent, Conn: conn}
-	myIP := net.Conn.RemoteAddr().String()
+	//myIP := net.Conn.RemoteAddr().String()
 	reader := bufio.NewReader(conn)
 
 	commands := make(map[string]func(map[string]*EventBus, *User, string, string))
@@ -81,6 +82,7 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 					client.Status = UserRegistered
 					buses[client.Nick] = &EventBus{subscribers: make(map[EventType][]Subscriber), channel: nil}
 					buses[client.Nick].Subscribe(PrivMsg, &client)
+					sendWelcome(&client)
 				case "PASS": //need to remove this at some point!
 					client.Nick = regCmd[1]
 					client.Ident = regCmd[1]
@@ -168,7 +170,8 @@ func handleJoin(buses map[string]*EventBus, client *User, target string, data st
 func handleTopic(buses map[string]*EventBus, client *User, target string, data string) {
 	b, ok := buses[target]
 	if !ok {
-		client.Conn.Write([]byte("Channel does not exist\n"))
+		sendError(client, ERR_UNKNOWNERROR)
+		//client.Conn.Write([]byte("Channel does not exist\n"))
 		return
 	}
 	_, ok = b.channel.mode[client.Nick]

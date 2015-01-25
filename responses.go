@@ -36,3 +36,16 @@ func loadMessages() {
 	canned_responses[ERR_NOSUCHCHANNEL] = "403 %q :no such channel"
 	canned_responses[ERR_CANNOTSENDTOCHAN] = "404 %q cannot send to channel"
 }
+
+func sendWelcome(user *User) {
+	user.Conn.Write([]byte(canned_responses[RPL_WELCOME]))
+	user.Conn.Write([]byte(canned_responses[RPL_CREATED]))
+	user.Conn.Write([]byte(canned_responses[RPL_YOURHOST]))
+	user.Conn.Write([]byte(canned_responses[RPL_MYINFO]))
+	user.Conn.Write([]byte(canned_responses[RPL_ISUPPORT]))
+	user.Conn.Write([]byte(canned_responses[RPL_YOURID]))
+	user.Conn.Write([]byte(canned_responses[RPL_MOTDSTART]))
+	user.Conn.Write([]byte(canned_responses[RPL_MOTD]))
+	user.Conn.Write([]byte(canned_responses[RPL_ENDOFMOTD]))
+
+}
