@@ -33,6 +33,7 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 	commands["JOIN"] = handleJoin
 	commands["MSG"] = handleMsg
 	commands["NICK"] = handleNick
+	commands["PART"] = handlePart
 
 	for {
 		status, err := reader.ReadString('\n')
@@ -89,7 +90,11 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 }
 
 func handlePart(buses map[string]*EventBus, client *User, target string, data string) {
-
+	message := fmt.Sprintf("%s parted %s!\n", client.Nick, target)
+	buses[target].Publish(&Event{event_type: UserPart, event_data: message})
+	buses[target].Unsubscribe(UserPart, client)
+	buses[target].Unsubscribe(UserJoin, client)
+	buses[target].Unsubscribe(PrivMsg, client)
 }
 
 func handleJoin(buses map[string]*EventBus, client *User, target string, data string) {
@@ -98,11 +103,12 @@ func handleJoin(buses map[string]*EventBus, client *User, target string, data st
 	if !ok {
 		// need to add support for channel topic
 		newChannel := Channel{name: target, topic: "gogo new channel!"}
-		buses[newChannel.name] = &EventBus{make(map[EventType][]Subscriber), &newChannel}
+		buses[newChannel.name] = &EventBus{subscribers: make(map[EventType][]Subscriber), channel: &newChannel}
 		b = buses[newChannel.name]
 	}
 	b.Subscribe(UserJoin, client)
 	b.Subscribe(PrivMsg, client)
+	b.Subscribe(UserPart, client)
 
 	message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
 	b.Publish(&Event{UserJoin, message})
@@ -120,6 +126,6 @@ func handleMsg(buses map[string]*EventBus, client *User, target string, data str
 	}
 	// implment check if client is subscribed to channel here
 	message := fmt.Sprintf("(%s)%s: %s\n", target, client.Nick, data)
-	b.Publish(&Event{PrivMsg, message})
+	b.Publish(&Event{event_type: PrivMsg, event_data: message})
 
 }
