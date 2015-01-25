@@ -52,6 +52,16 @@ func (c *Channel) GetInfo() string {
 	return c.name
 }
 
+func (u *User) Write(line string) {
+	u.Conn.Write([]byte(line + "\r\n"))
+}
+
+func (u *User) WriteLines(lines []string) {
+	for _, v := range lines {
+		u.Write(v)
+	}
+}
+
 func (u *User) OnEvent(event *Event) {
 	switch event.event_type {
 	case UserJoin:
