@@ -34,19 +34,32 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 		if err != nil {
 			panic(err)
 		}
+		status = strings.TrimSpace(status)
 
 		if client.Status < UserRegistered {
-			regCmd := strings.Split(status, " ")
+			regCmd := strings.SplitN(status, " ", 2)
 
 			switch regCmd[0] {
 			case "NICK":
 				client.Nick = regCmd[1]
 				conn.Write([]byte("welcome " + client.Nick + "\n"))
+				client.Status = UserNickSent
+
+			case "USER":
+				var uname, hname, sname, rname string
+				fmt.Sscanf(regCmd[1], "%q %q %q :%q", uname, hname, sname, rname) //TODO(jz) need to split on : in case real name has spaces
+				fmt.Println(hname + uname)                                        //just so we don't get the unused var error
+				client.Ident = uname
+				client.RealName = rname
+				client.Status = UserRegistered
+			case "PASS":
+				client.Nick = regCmd[1]
+				client.Ident = regCmd[1]
+				client.RealName = regCmd[1]
 				client.Status = UserRegistered
 
-			//}
 			default:
-				conn.Write([]byte("you must register first. try nick?\n"))
+				conn.Write([]byte("you must register first. try nick or user?\n"))
 			}
 
 		} else {
@@ -76,8 +89,6 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 					buses[newChannel.name] = &EventBus{make(map[EventType][]Subscriber), &newChannel}
 					b = buses[newChannel.name]
 				}
-				data = data[:len(data)-2]
-				fmt.Println(data)
 				b.Subscribe(UserJoin, &client)
 				b.Subscribe(PrivMsg, &client)
 
