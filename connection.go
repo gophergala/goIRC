@@ -33,6 +33,7 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 	commands["JOIN"] = handleJoin
 	commands["MSG"] = handleMsg
 	commands["NICK"] = handleNick
+	commands["HELP"] = handleHelp
 
 	for {
 		status, err := reader.ReadString('\n')
@@ -125,4 +126,16 @@ func handleMsg(buses map[string]*EventBus, client *User, target string, data str
 	message := fmt.Sprintf("%s: %s\n", client.Nick, data)
 	b.Publish(&Event{PrivMsg, message})
 
+}
+
+func handleHelp(buses map[string]*EventBus, client *User, target string, data string) {
+	k, ok := Help[target]
+	if !ok {
+		client.Conn.Write([]byte("Available Commands:\n"))
+		for h := range Help {
+			client.Conn.Write([]byte(h + "\n"))
+		}
+	} else {
+		client.Conn.Write([]byte("Summary: " + k.Summary + "\nUsage: " + k.Syntax + "\n"))
+	}
 }
