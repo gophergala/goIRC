@@ -30,10 +30,7 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 	reader := bufio.NewReader(conn)
 
 	for {
-		fmt.Println("READY TO READ!!!!!!!!!!!!!!!!!!!!!!")
-
 		status, err := reader.ReadString('\n')
-		fmt.Println("GOT BY READ!!!!!!!!!!!!!!!!!!!!!!")
 		if err != nil {
 			panic(err)
 		}
@@ -44,37 +41,58 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 			switch regCmd[0] {
 			case "NICK":
 				client.Nick = regCmd[1]
-				conn.Write([]byte("welcome " + client.Nick + "\r\n"))
-				client.Status = UserNickSent
+				conn.Write([]byte("welcome " + client.Nick + "\n"))
+				client.Status = UserRegistered
 
 			//}
 			default:
-				conn.Write([]byte("you must register first. try nick?\r\n"))
+				conn.Write([]byte("you must register first. try nick?\n"))
 			}
 
 		} else {
+			// split <command> <target>:<data>
 			var cmd, target, data string
-
-			n, err := fmt.Sscanf(status, "%s %s %q", &cmd, &target, &data)
+			s := strings.SplitN(status, ":", 2)
+			_, err = fmt.Sscanf(s[0], "%s %s", &cmd, &target)
 			if err != nil {
 				fmt.Println(err)
+				conn.Write([]byte("Invalid input! CHECK YOUR(self) SYNTAX\n"))
+				continue
 			}
-			fmt.Println(n)
-			fmt.Println(cmd, target, data)
+			fmt.Println(len(s))
+			if len(s) == 2 {
+				data = s[1]
+			} else {
+				conn.Write([]byte("SYNTAX...PLEASE....\n"))
+				continue
+			}
 
 			switch cmd {
 			case "JOIN":
-				b := buses[target]
-				b.Subscribe(ChannelUserJoin, &client)
-				b.Subscribe(ChannelMsg, &client)
+				b, ok := buses[target]
+				if !ok {
+					// need to add support for channel topic
+					newChannel := Channel{name: target, topic: "gogo new channel!"}
+					buses[newChannel.name] = &EventBus{make(map[EventType][]Subscriber), &newChannel}
+					b = buses[newChannel.name]
+				}
+				data = data[:len(data)-2]
+				fmt.Println(data)
+				b.Subscribe(UserJoin, &client)
+				b.Subscribe(PrivMsg, &client)
+
 				message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
-				b.Publish(&Event{ChannelUserJoin, message})
-				fmt.Println("JOIN CASE WAS HIT!!!!!!!!!!!!")
+				b.Publish(&Event{UserJoin, message})
 			case "MSG":
-				b := buses[target]
-				message := fmt.Sprintf("%s: %s\n", client.Nick, data)
-				b.Publish(&Event{ChannelMsg, message})
-				fmt.Println("MSG WAS HIT!!!!!")
+				b, ok := buses[target]
+				if !ok {
+					conn.Write([]byte("Channel does not exist\n"))
+				}
+				// implment check if client is subscribed to channel here
+				message := fmt.Sprintf("%s: %s", client.Nick, data)
+				b.Publish(&Event{PrivMsg, message})
+			default:
+				conn.Write([]byte("No Command match\n"))
 			}
 		}
 	}

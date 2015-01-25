@@ -3,17 +3,15 @@ package main
 import (
 	"fmt"
 	"net"
-	_ "strings"
 	_ "sync"
 )
 
 type EventType int
 
 const (
-	ChannelUserJoin EventType = iota
-	ChannelUserPart
-	ChannelPrivMsg
-	ChannelMsg
+	UserJoin EventType = iota
+	UserPart
+	PrivMsg
 )
 
 type Subscriber interface {
@@ -37,13 +35,13 @@ type Channel struct {
 
 func (u *User) OnEvent(event *Event) {
 	switch event.event_type {
-	case ChannelUserJoin:
+	case UserJoin:
 		//fmt.Printf("%q(%d)> %q\n", s.Nick, event.event_type, event.event_data)
 		_, err := u.Conn.Write([]byte(event.event_data))
 		if err != nil {
 			fmt.Println("Not looking too good")
 		}
-	case ChannelMsg:
+	case PrivMsg:
 		_, err := u.Conn.Write([]byte(event.event_data))
 		if err != nil {
 			fmt.Println("Not looking too good")
@@ -64,6 +62,29 @@ func (bus *EventBus) Subscribe(event_type EventType, subscriber Subscriber) {
 
 var buses map[string]*EventBus
 
+func init() {
+
+	// make new channel #gophers
+	// gophers := Channel{name: "#gophers", topic: "gogo gophergala!"}
+
+	// buses[gophers.name] = &EventBus{make(map[EventType][]*Subscriber), &gophers}
+	// fmt.Println("New Channel: " + buses[gophers.name].channel.name)
+	// sub := Subscriber{Nick: "a_client"}
+	// fmt.Println("New Subscriber: " + sub.Nick)
+
+	// b := buses["#gophers"]
+	// b.Subscribe(ChannelUserJoin, &sub)
+
+	// // e := Event{event_type: EventSay, event_data: "hello, world"}
+
+	// for i := 0; i < 10; i++ {
+	// 	s := Subscriber{Nick: fmt.Sprintf("client_%v", i)}
+	// 	b.Subscribe(ChannelUserJoin, &s)
+	// }
+	// e := Event{event_type: ChannelUserJoin, event_data: "Alvin has joined!"}
+	//b.Publish(&e)
+	// bus.Publish(&Event{event_type: EventLeave})
+}
 func main() {
 	// init event bus map
 	buses := make(map[string]*EventBus)
