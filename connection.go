@@ -44,7 +44,6 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 				client.Nick = regCmd[1]
 				conn.Write([]byte("welcome " + client.Nick + "\n"))
 				client.Status = UserNickSent
-
 			case "USER":
 				var uname, hname, sname, rname string
 				fmt.Sscanf(regCmd[1], "%q %q %q :%q", uname, hname, sname, rname) //TODO(jz) need to split on : in case real name has spaces
