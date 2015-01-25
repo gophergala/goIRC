@@ -52,6 +52,11 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 				client.Ident = uname
 				client.RealName = rname
 				client.Status = UserRegistered
+			case "PASS":
+				client.Nick = regCmd[1]
+				client.Ident = regCmd[1]
+				client.RealName = regCmd[1]
+				client.Status = UserRegistered
 
 			default:
 				conn.Write([]byte("you must register first. try nick or user?\n"))
