@@ -52,7 +52,6 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 
 		if client.Status < UserRegistered {
 			regCmd := strings.SplitN(status, " ", 2)
-
 			switch regCmd[0] {
 			case "NICK":
 				//client.Nick = regCmd[1]

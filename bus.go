@@ -91,36 +91,12 @@ func (bus *EventBus) Unsubscribe(event_type EventType, subscriber Subscriber) {
 		bus.Lock() //lock the eventbus while we remove the subscriber from the array
 		bus.subscribers[event_type] = cur
 		bus.Unlock()
-
 	}
 
 }
 
 var buses map[string]*EventBus
 
-func init() {
-
-	// make new channel #gophers
-	// gophers := Channel{name: "#gophers", topic: "gogo gophergala!"}
-
-	// buses[gophers.name] = &EventBus{make(map[EventType][]*Subscriber), &gophers}
-	// fmt.Println("New Channel: " + buses[gophers.name].channel.name)
-	// sub := Subscriber{Nick: "a_client"}
-	// fmt.Println("New Subscriber: " + sub.Nick)
-
-	// b := buses["#gophers"]
-	// b.Subscribe(ChannelUserJoin, &sub)
-
-	// // e := Event{event_type: EventSay, event_data: "hello, world"}
-
-	// for i := 0; i < 10; i++ {
-	// 	s := Subscriber{Nick: fmt.Sprintf("client_%v", i)}
-	// 	b.Subscribe(ChannelUserJoin, &s)
-	// }
-	// e := Event{event_type: ChannelUserJoin, event_data: "Alvin has joined!"}
-	//b.Publish(&e)
-	// bus.Publish(&Event{event_type: EventLeave})
-}
 func main() {
 	// init event bus map
 	buses := make(map[string]*EventBus)
