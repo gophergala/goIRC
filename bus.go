@@ -36,7 +36,7 @@ type Channel struct {
 	topic string
 }
 
-// something funky going on here
+// something funky going on
 // type Subscriber interface {
 // 	OnEvent(event *Event)
 // }
