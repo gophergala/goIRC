@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"sync"
 )
 
 type EventType int
@@ -14,6 +15,10 @@ const (
 	ChannelPrivMsg
 	ChannelMsg
 )
+
+type MasterBus struct {
+	buses map[string]EventBus
+}
 
 type Subscriber interface {
 	OnEvent(*Event)
@@ -30,8 +35,11 @@ type Event struct {
 }
 
 type User struct {
-	Nick string
-	conn net.Conn
+	Nick     string
+	Ident    string
+	RealName string
+	Conn     net.Conn
+	Status   ConnectionStatus
 }
 
 type Channel struct {
@@ -43,6 +51,10 @@ type Channel struct {
 // type Subscriber interface {
 // 	OnEvent(event *Event)
 // }
+
+func (b *MasterBus) addBus(target string) {
+	var mutex
+}
 
 func (u *User) OnEvent(event *Event) {
 	switch event.event_type {
@@ -71,41 +83,6 @@ func (bus *EventBus) Subscribe(event_type EventType, subscriber Subscriber) {
 	bus.subscribers[event_type] = append(bus.subscribers[event_type], subscriber)
 }
 
-func handleConnection(conn net.Conn) {
-	var client User
-	for {
-		status, err := bufio.NewReader(conn).ReadString('\n')
-		if err != nil {
-			panic("OH NOEESssss")
-		}
-		var cmd, target, data string
-		n, err := fmt.Sscanf(status, "%s %s %q", &cmd, &target, &data)
-		fmt.Println(n)
-		fmt.Println(cmd, target, data)
-
-		// this does not realy work...
-		switch cmd {
-		case "JOIN":
-			client = User{Nick: data, conn: conn}
-			b := buses[target]
-			b.Subscribe(ChannelUserJoin, &client)
-			b.Subscribe(ChannelMsg, &client)
-			message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
-			b.Publish(&Event{ChannelUserJoin, message})
-		case "MSG":
-			b := buses[target]
-			message := fmt.Sprintf("%s: %s\n", client.Nick, data)
-			b.Publish(&Event{ChannelMsg, message})
-		}
-		// this just echos whatever is sent over
-		//n, err := conn.Write([]byte(status))
-		// if err != nil {
-		// 	fmt.Println("Not looking too good")
-		// }
-		// fmt.Println(n)
-	}
-}
-
 var buses map[string]*EventBus
 
 func init() {
@@ -118,6 +95,7 @@ func init() {
 	buses[gophers.name] = &EventBus{make(map[EventType][]Subscriber), &gophers}
 	fmt.Println("New Channel: " + buses[gophers.name].channel.name)
 }
+
 func main() {
 	ln, err := net.Listen("tcp", ":3030")
 	if err != nil {
