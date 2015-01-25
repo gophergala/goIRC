@@ -1,27 +1,53 @@
 package main
 
-var Help = map[string]string {
-	CMD_JOIN: 	"join a new channel /n
-				syntax: JOIN <#channel>: <username>"
-	CMD_MSG: 	"send a message to a channel /n
-				syntax: <MSG <#channel>: <your message here>"
-	
-	// not yet implemented
-	CMD_TOPIC: 	"see the topic for a certain channel /n
-				syntax: TOPIC <#channel>: <your topic here>"
-	CMD_USERS: 	"get a list of all users in a channel /n
-				syntax: USERS <#channel>"
-	CMD_NICK: 	"change your nickname /n
-				syntax: NICK <new_nick_here>"
-	CMD_QUIT:	"quit the server
-				syntax: <QUIT>"
-	CMD_PART:	"leave the channel
-				syntax: PART <#channel>"
-	CMD_KICK:	"kick out a user from the channel - ops only /n
-				syntax: KICK <#channel>: <user_to_kick>"
-	CMD_INVITE:	"invite a user to the channel /n
-				syntax: INVITE <#channel>: <user_to_invite>"
-	CMD_KILL:	"disconnect a user - ops only /n
-				syntax: KILL <user_to_kill>"
+type HelpCommand struct {
+	Summary string
+	Syntax  string
+	// Help		string - more detailed help instructions
+	// Ops		boolean - flag to see who can use the command
 }
 
+var Help = map[string]HelpCommand{
+	"CMD_JOIN": HelpCommand{
+		Summary: "join a new channel",
+		Syntax:  "JOIN <#channel>: <username>",
+	},
+	"CMD_MSG": HelpCommand{
+		Summary: "send a message to a channel",
+		Syntax:  "MSG <#channel>: <your message here>",
+	},
+
+	// not yet implemented
+	"CMD_TOPIC": HelpCommand{
+		Summary: "see the topic for a certain channel",
+		Syntax:  "TOPIC <#channel>: <your topic here>",
+	},
+	"CMD_USERS": HelpCommand{
+		Summary: "get a list of all users in a channel",
+		Syntax:  "syntax: USERS <#channel>",
+	},
+	"CMD_NICK": HelpCommand{
+		Summary: "change your nickname",
+		Syntax:  "NICK <new_nick_here>",
+	},
+	"CMD_QUIT": HelpCommand{
+		Summary: "quit the server",
+		Syntax:  "<QUIT>",
+	},
+	"CMD_PART": HelpCommand{
+		Summary: "leave the channel",
+		Syntax:  "PART <#channel>",
+	},
+	"CMD_KICK": HelpCommand{
+		Summary: "kick out a user from the channel - ops only",
+		Syntax:  "KICK <#channel>: <user_to_kick>",
+	},
+	"CMD_INVITE": HelpCommand{
+		Summary: "invite a user to the channel",
+		Syntax:  "INVITE <#channel>: <user_to_invite>",
+	},
+	"CMD_KILL": HelpCommand{
+		Summary: "disconnect a user - ops only",
+		Syntax:  "KILL <user_to_kill>",
+	},
+}
