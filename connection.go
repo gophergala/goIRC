@@ -37,17 +37,24 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 		status = strings.TrimSpace(status)
 
 		if client.Status < UserRegistered {
-			regCmd := strings.Split(status, " ")
+			regCmd := strings.SplitN(status, " ", 2)
 
 			switch regCmd[0] {
 			case "NICK":
 				client.Nick = regCmd[1]
 				conn.Write([]byte("welcome " + client.Nick + "\n"))
+				client.Status = UserNickSent
+
+			case "USER":
+				var uname, hname, sname, rname string
+				fmt.Sscanf(regCmd[1], "%q %q %q :%q", uname, hname, sname, rname) //TODO(jz) need to split on : in case real name has spaces
+				fmt.Println(hname + uname)                                        //just so we don't get the unused var error
+				client.Ident = uname
+				client.RealName = rname
 				client.Status = UserRegistered
 
-			//}
 			default:
-				conn.Write([]byte("you must register first. try nick?\n"))
+				conn.Write([]byte("you must register first. try nick or user?\n"))
 			}
 
 		} else {
