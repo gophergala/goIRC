@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
-	_ "sync"
+	"sync"
 )
 
 type EventType int
@@ -30,6 +30,7 @@ type Subscriber interface {
 type EventBus struct {
 	subscribers map[EventType][]Subscriber
 	channel     *Channel
+	sync.Mutex
 }
 
 type Event struct {
@@ -69,6 +70,8 @@ func (u *User) OnEvent(event *Event) {
 		if err != nil {
 			fmt.Println("Not looking too good")
 		}
+	default:
+		u.Conn.Write([]byte(event.event_data))
 	}
 }
 func (bus *EventBus) Publish(event *Event) {
@@ -85,7 +88,6 @@ func (bus *EventBus) Subscribe(event_type EventType, subscriber Subscriber) {
 
 func (bus *EventBus) Unsubscribe(event_type EventType, subscriber Subscriber) {
 	//find the index
-
 	i := -1
 
 	for index, val := range bus.subscribers[event_type] {
@@ -99,6 +101,11 @@ func (bus *EventBus) Unsubscribe(event_type EventType, subscriber Subscriber) {
 		cur := bus.subscribers[event_type]
 		endIndex := i + 1 //will break if index is last element!
 		cur = append(cur[0:i], cur[endIndex:]...)
+
+		bus.Lock() //lock the eventbus while we remove the subscriber from the array
+		bus.subscribers[event_type] = cur
+		bus.Unlock()
+
 	}
 
 }
