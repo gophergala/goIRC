@@ -153,9 +153,11 @@ func handleList(buses map[string]*EventBus, client *User, target string, data st
 	} else {
 		client.Conn.Write([]byte("Channels\n"))
 		for k, _ := range buses {
-			client.Conn.Write([]byte(k))
+			if k[:1] == "#" {
+				client.Conn.Write([]byte(k))
+			}
 		}
-		client.Conn.Write([]byte("\n"))
+		client.Conn.Write([]byte("End of List\n"))
 	}
 }
 
