@@ -83,13 +83,16 @@ func (bus *EventBus) Unsubscribe(event_type EventType, subscriber Subscriber) {
 		}
 	}
 
-	bus.Lock()
 	if i > -1 { //we found someone
 		cur := bus.subscribers[event_type]
 		endIndex := i + 1 //will break if index is last element!
 		cur = append(cur[0:i], cur[endIndex:]...)
+
+		bus.Lock() //lock the eventbus while we remove the subscriber from the array
+		bus.subscribers[event_type] = cur
+		bus.Unlock()
+
 	}
-	bus.Unlock()
 
 }
 
