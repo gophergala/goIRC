@@ -34,7 +34,14 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 		if err != nil {
 			panic(err)
 		}
+
 		status = strings.TrimSpace(status)
+
+		// allows user to enter empty strings
+		if len(status) == 0 {
+			conn.Write([]byte(""))
+			continue
+		}
 
 		if client.Status < UserRegistered {
 			regCmd := strings.SplitN(status, " ", 2)
