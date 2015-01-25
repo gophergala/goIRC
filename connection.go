@@ -93,7 +93,7 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 					client.Status = UserRegistered
 					sendWelcome(&client)
 
-					//conn.Write([]byte("Welcome " + regCmd[1] + ")
+				//conn.Write([]byte("Welcome " + regCmd[1] + ")
 
 				default:
 					client.Write("you must register first. try nick or user?")
