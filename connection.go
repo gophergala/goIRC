@@ -63,7 +63,7 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 			}
 
 		} else {
-			// split <command> <target>:<data>
+			// split <command> <target> :<data>
 			var cmd, target, data string
 			s := strings.SplitN(status, ":", 2)
 			_, err = fmt.Sscanf(s[0], "%s %s", &cmd, &target)
@@ -72,14 +72,6 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 				conn.Write([]byte("Invalid input! CHECK YOUR(self) SYNTAX\n"))
 				continue
 			}
-			fmt.Println(len(s))
-			if len(s) == 2 {
-				data = s[1]
-			} else {
-				conn.Write([]byte("SYNTAX...PLEASE....\n"))
-				continue
-			}
-
 			switch cmd {
 			case "JOIN":
 				b, ok := buses[target]
@@ -95,12 +87,19 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 				message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
 				b.Publish(&Event{UserJoin, message})
 			case "MSG":
+				if len(s) == 2 {
+					data = s[1]
+				} else {
+					conn.Write([]byte("No words? Speechless?\n"))
+					continue
+				}
+
 				b, ok := buses[target]
 				if !ok {
 					conn.Write([]byte("Channel does not exist\n"))
 				}
 				// implment check if client is subscribed to channel here
-				message := fmt.Sprintf("%s: %s", client.Nick, data)
+				message := fmt.Sprintf("%s: %s\n", client.Nick, data)
 				b.Publish(&Event{PrivMsg, message})
 			default:
 				conn.Write([]byte("No Command match\n"))
