@@ -23,10 +23,16 @@ type User struct {
 	RealName string
 	Conn     net.Conn
 	Status   ConnectionStatus
+	Host     string
+}
+
+func (u *User) getHead() string {
+	return fmt.Sprintf(":%s!%s@%s", u.Nick, u.Ident, u.Host)
 }
 
 func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 	client := User{Status: UserPassSent, Conn: conn}
+	myIP := net.Conn.RemoteAddr().String()
 	reader := bufio.NewReader(conn)
 
 	commands := make(map[string]func(map[string]*EventBus, *User, string, string))
@@ -73,15 +79,13 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 					client.Ident = uname
 					client.RealName = rname
 					client.Status = UserRegistered
-					fmt.Println("len: " + string(len(buses)))
 					buses[client.Nick] = &EventBus{subscribers: make(map[EventType][]Subscriber), channel: nil}
 					buses[client.Nick].Subscribe(PrivMsg, &client)
-					fmt.Println("len: " + string(len(buses)))
-
-				case "PASS":
+				case "PASS": //need to remove this at some point!
 					client.Nick = regCmd[1]
 					client.Ident = regCmd[1]
 					client.RealName = regCmd[1]
+
 					buses[client.Nick] = &EventBus{subscribers: make(map[EventType][]Subscriber), channel: nil}
 					buses[client.Nick].Subscribe(PrivMsg, &client)
 					client.Status = UserRegistered
@@ -188,22 +192,20 @@ func handleNick(buses map[string]*EventBus, client *User, target string, data st
 }
 
 func handleMsg(buses map[string]*EventBus, client *User, target string, data string) {
-	fmt.Println("len: " + string(len(buses)))
-
 	b, ok := buses[target]
 	if !ok {
 		client.Conn.Write([]byte("Channel does not exist\n"))
 		return
 	}
-	if b.channel != nil {
+	if b.channel != nil { //hacky but works for now
 		_, ok = b.channel.mode[client.Nick]
 		if !ok {
 			client.Conn.Write([]byte("User not subscribed\n"))
 			return
 		}
 	}
-	// implment check if client is subscribed to channel here
-	message := fmt.Sprintf("(%s)%s: %s\n", target, client.Nick, data)
+	// implement check if client is subscribed to channel here
+	message := fmt.Sprintf("%s PRIVMSG %s: %s\n", client.getHead(), target, data)
 	b.Publish(&Event{event_type: PrivMsg, event_data: message})
 	buses[client.Nick].Publish(&Event{event_type: PrivMsg, event_data: message})
 
