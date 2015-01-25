@@ -12,9 +12,9 @@ var Help = map[string]HelpCommand{
 		Summary: "join a new channel",
 		Syntax:  "JOIN <#channel>: <username>",
 	},
-	"MSG": HelpCommand{
+	"PRIVMSG": HelpCommand{
 		Summary: "send a message to a channel",
-		Syntax:  "MSG <#channel>: <your message here>",
+		Syntax:  "PRIVMSG <#channel>: <your message here>",
 	},
 	"NICK": HelpCommand{
 		Summary: "change your nickname",
