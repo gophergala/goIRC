@@ -38,19 +38,15 @@ func loadMessages() {
 	canned_responses[ERR_NOSUCHCHANNEL] = "403 %s :no such channel"
 	canned_responses[ERR_CANNOTSENDTOCHAN] = "404 %s cannot send to channel"
 	for i, v := range canned_responses {
-		canned_responses[i] = fmt.Sprintf(v, HOST_STRING)
+		canned_responses[i] = ":" + HOST_STRING + v
 	}
 }
 
 func sendWelcome(user *User) {
-	user.Write(canned_responses[RPL_WELCOME])
-	user.Write(canned_responses[RPL_CREATED])
-	user.Write(canned_responses[RPL_YOURHOST])
-	user.Write(canned_responses[RPL_MYINFO])
-	user.Write(canned_responses[RPL_ISUPPORT])
-	user.Write(canned_responses[RPL_YOURID])
-	user.Write(canned_responses[RPL_MOTDSTART])
-	user.Write(canned_responses[RPL_MOTD])
-	user.Write(canned_responses[RPL_ENDOFMOTD])
+	user.Write(":" + HOST_STRING + " NOTICE Auth :welcome!")
+	types := []int{RPL_WELCOME, RPL_CREATED, RPL_YOURHOST, RPL_MYINFO, RPL_ISUPPORT, RPL_YOURID, RPL_MOTDSTART, RPL_MOTD, RPL_ENDOFMOTD}
 
+	for _, val := range types {
+		user.Write(fmt.Sprintf(canned_responses[val], user.Nick))
+	}
 }
