@@ -31,16 +31,24 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 
 	commands := make(map[string]func(map[string]*EventBus, *User, string, string))
 	commands["JOIN"] = handleJoin
-	commands["MSG"] = handleMsg
+	commands["PRIVMSG"] = handleMsg
 	commands["NICK"] = handleNick
 	commands["PART"] = handlePart
+	commands["HELP"] = handleHelp
 
 	for {
 		status, err := reader.ReadString('\n')
 		if err != nil {
 			return
 		}
+
 		status = strings.TrimSpace(status)
+
+		// allows user to enter empty strings
+		if len(status) == 0 {
+			conn.Write([]byte(""))
+			continue
+		}
 
 		if client.Status < UserRegistered {
 			regCmd := strings.SplitN(status, " ", 2)
@@ -128,4 +136,16 @@ func handleMsg(buses map[string]*EventBus, client *User, target string, data str
 	message := fmt.Sprintf("(%s)%s: %s\n", target, client.Nick, data)
 	b.Publish(&Event{event_type: PrivMsg, event_data: message})
 
+}
+
+func handleHelp(buses map[string]*EventBus, client *User, target string, data string) {
+	k, ok := Help[target]
+	if !ok {
+		client.Conn.Write([]byte("Available Commands:\n"))
+		for h := range Help {
+			client.Conn.Write([]byte(h + "\n"))
+		}
+	} else {
+		client.Conn.Write([]byte("Summary: " + k.Summary + "\nUsage: " + k.Syntax + "\n"))
+	}
 }
