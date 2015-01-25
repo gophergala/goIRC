@@ -26,27 +26,30 @@ type User struct {
 }
 
 func handleConnection(conn net.Conn, buses map[string]*EventBus) {
-	client := User{Status: UserPassSent}
+	client := User{Status: UserPassSent, Conn: conn}
+	reader := bufio.NewReader(conn)
 
 	for {
-		status, err := bufio.NewReader(conn).ReadString('\n')
+		fmt.Println("READY TO READ!!!!!!!!!!!!!!!!!!!!!!")
+
+		status, err := reader.ReadString('\n')
+		fmt.Println("GOT BY READ!!!!!!!!!!!!!!!!!!!!!!")
 		if err != nil {
-			panic("OH NOEESssss")
+			panic(err)
 		}
 
-		if client.Status != UserRegistered {
+		if client.Status < UserRegistered {
 			regCmd := strings.Split(status, " ")
 
 			switch regCmd[0] {
 			case "NICK":
-				client.Status = UserRegistered
-
 				client.Nick = regCmd[1]
 				conn.Write([]byte("welcome " + client.Nick + "\r\n"))
-				//if client.Status == UserPassSent {
+				client.Status = UserNickSent
+
 			//}
 			default:
-				conn.Write([]byte("you must register first. try nick?\n"))
+				conn.Write([]byte("you must register first. try nick?\r\n"))
 			}
 
 		} else {
