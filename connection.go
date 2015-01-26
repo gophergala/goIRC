@@ -195,7 +195,7 @@ func handleJoin(buses map[string]*EventBus, client *User, target string, data st
 		b.Subscribe(PrivMsg, client)
 		b.Subscribe(Topic, client)
 		//message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
-		message := fmt.Sprintf("%s JOIN %s", client.getHead(), target)
+		message := fmt.Sprintf("%s JOIN %s\n", client.getHead(), target)
 		//send names
 		var names string
 		for _, val := range buses[target].subscribers[PrivMsg] {
@@ -260,7 +260,7 @@ func handleList(buses map[string]*EventBus, client *User, target string, data st
 		client.Write("Channels")
 		for k, _ := range buses {
 			if k[:1] == "#" {
-				client.Conn.Write([]byte(k))
+				client.Conn.Write([]byte(k + "\n"))
 			}
 		}
 		client.Conn.Write([]byte("End of List\n"))
