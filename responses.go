@@ -24,6 +24,7 @@ const (
 
 func loadMessages() {
 	canned_responses = make(map[int]string)
+
 	canned_responses[RPL_WELCOME] = " 001 %s :Welcome to the Capital One Labs IRC Network"
 	canned_responses[RPL_YOURHOST] = " 002 %s :Your host is goirc.capitalonelabs.com, running goIRC-0.0.1"
 	canned_responses[RPL_CREATED] = " 003 %s :This server was created at some point in the past"
@@ -37,6 +38,7 @@ func loadMessages() {
 	canned_responses[ERR_NOSUCHNICK] = " 400 %s :no such nick"
 	canned_responses[ERR_NOSUCHCHANNEL] = " 403 %s :no such channel"
 	canned_responses[ERR_CANNOTSENDTOCHAN] = " 404 %s cannot send to channel"
+
 	for i, v := range canned_responses {
 		canned_responses[i] = ":" + HOST_STRING + v
 	}
