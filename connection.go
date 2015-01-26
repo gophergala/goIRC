@@ -44,6 +44,8 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 	commands["PART"] = handlePart
 	commands["HELP"] = handleHelp
 	commands["LIST"] = handleList
+	commands["PING"] = handlePing
+	commands["PONG"] = handlePong
 
 	for {
 		status, err := reader.ReadString('\n')
@@ -68,18 +70,22 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 			if client.Status < UserRegistered {
 				regCmd := strings.SplitN(status, " ", 2)
 				regCmd[0] = strings.ToUpper(regCmd[0])
+				fmt.Println("-" + regCmd[0] + "-" + regCmd[1])
 				switch regCmd[0] {
 				case "NICK":
 					//client.Nick = regCmd[1]
 					handleNick(buses, &client, regCmd[1], "")
 					client.Status = UserNickSent
 				case "USER":
+					fmt.Println("hit user case")
 					var uname, hname, sname, rname string
-					fmt.Sscanf(regCmd[1], "%q %q %q :%q", uname, hname, sname, rname) //TODO(jz) need to split on : in case real name has spaces
-					fmt.Println(hname + uname)                                        //just so we don't get the unused var error
-					client.Ident = uname
+					fmt.Sscanf(regCmd[1], "%s %s %s :%s", uname, hname, sname, rname) //TODO(jz) need to split on : in case real name has spaces
+					fmt.Println(hname + uname)
+					//client.Ident = uname
 					client.RealName = rname
 					client.Status = UserRegistered
+					client.Ident = client.Nick
+					fmt.Println("username:" + client.Ident)
 					buses[client.Nick] = &EventBus{subscribers: make(map[EventType][]Subscriber), channel: nil}
 					buses[client.Nick].Subscribe(PrivMsg, &client)
 					sendWelcome(&client)
@@ -163,6 +169,14 @@ func handlePart(buses map[string]*EventBus, client *User, target string, data st
 	}
 }
 
+func handlePing(buses map[string]*EventBus, client *User, target string, data string) {
+	client.Write("PONG " + target)
+}
+
+func handlePong(buses map[string]*EventBus, client *User, target string, data string) {
+	//no op for fun
+}
+
 func handleJoin(buses map[string]*EventBus, client *User, target string, data string) {
 	fmt.Println("!!!!!!!!! JOIN")
 	if !isChannel(target) {
@@ -181,12 +195,14 @@ func handleJoin(buses map[string]*EventBus, client *User, target string, data st
 		b.Subscribe(PrivMsg, client)
 		b.Subscribe(Topic, client)
 		//message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
-		message := fmt.Sprintf("%q JOIN %q", client.getHead(), target)
+		message := fmt.Sprintf("%s JOIN %s", client.getHead(), target)
 		//send names
 		var names string
 		for _, val := range buses[target].subscribers[PrivMsg] {
 			names = names + " " + val.GetInfo()
 		}
+		client.Write(":" + HOST_STRING + " 332 " + client.Nick + " " + target + ":no topic set")
+		client.Write(":" + HOST_STRING + " 333 " + client.Nick + " " + target + " admin!admin@localhost 1419044230")
 		client.Write(":" + HOST_STRING + " 353 " + client.Nick + " " + target + " :" + names)
 		client.Write(":" + HOST_STRING + " 366 " + client.Nick + " * :END of /NAMES list.")
 		///end send names
@@ -194,6 +210,7 @@ func handleJoin(buses map[string]*EventBus, client *User, target string, data st
 	}
 
 }
+
 func handleTopic(buses map[string]*EventBus, client *User, target string, data string) {
 	b, ok := checkEventBus(buses, client, target)
 	if !ok {
