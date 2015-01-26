@@ -44,6 +44,8 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 	commands["PART"] = handlePart
 	commands["HELP"] = handleHelp
 	commands["LIST"] = handleList
+	commands["PING"] = handlePing
+	commands["PONG"] = handlePong
 
 	for {
 		status, err := reader.ReadString('\n')
@@ -152,6 +154,14 @@ func handlePart(buses map[string]*EventBus, client *User, target string, data st
 	}
 }
 
+func handlePing(buses map[string]*EventBus, client *User, target string, data string) {
+	client.Write("PONG " + target)
+}
+
+func handlePong(buses map[string]*EventBus, client *User, target string, data string) {
+	//no op for fun
+}
+
 func handleJoin(buses map[string]*EventBus, client *User, target string, data string) {
 	fmt.Println("!!!!!!!!! JOIN")
 	b, ok := buses[target]
@@ -168,7 +178,7 @@ func handleJoin(buses map[string]*EventBus, client *User, target string, data st
 		b.Subscribe(PrivMsg, client)
 		b.Subscribe(Topic, client)
 		//message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
-		message := fmt.Sprintf("%q JOIN %q", client.getHead(), target)
+		message := fmt.Sprintf("%s JOIN %s", client.getHead(), target)
 		//send names
 		var names string
 		for _, val := range buses[target].subscribers[PrivMsg] {
@@ -184,6 +194,7 @@ func handleJoin(buses map[string]*EventBus, client *User, target string, data st
 		client.Write("User is already subscribed")
 	}
 }
+
 func handleTopic(buses map[string]*EventBus, client *User, target string, data string) {
 	b, ok := buses[target]
 	if !ok {
@@ -238,17 +249,12 @@ func handleList(buses map[string]*EventBus, client *User, target string, data st
 	} else {
 		client.Write("Channels")
 		for k, _ := range buses {
-<<<<<<< HEAD
 			if k[:1] == "#" {
 				client.Conn.Write([]byte(k))
 			}
 		}
 		client.Conn.Write([]byte("End of List\n"))
-=======
-			client.Write(k)
-		}
-		client.Write("")
->>>>>>> aa4f7add8d5f998f5b9b242f39d4946acf03fc42
+		//client.Write(k)
 	}
 }
 
