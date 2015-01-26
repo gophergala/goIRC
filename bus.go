@@ -52,6 +52,16 @@ func (c *Channel) GetInfo() string {
 	return c.name
 }
 
+func (u *User) Write(line string) {
+	u.Conn.Write([]byte(line + "\r\n"))
+}
+
+func (u *User) WriteLines(lines []string) {
+	for _, v := range lines {
+		u.Write(v)
+	}
+}
+
 func (u *User) OnEvent(event *Event) {
 	switch event.event_type {
 	case UserJoin:
@@ -105,7 +115,6 @@ func (bus *EventBus) Unsubscribe(event_type EventType, subscriber Subscriber) {
 		bus.Lock() //lock the eventbus while we remove the subscriber from the array
 		bus.subscribers[event_type] = cur
 		bus.Unlock()
-
 	}
 
 }
@@ -113,27 +122,7 @@ func (bus *EventBus) Unsubscribe(event_type EventType, subscriber Subscriber) {
 var buses map[string]*EventBus
 
 func init() {
-
-	// make new channel #gophers
-	// gophers := Channel{name: "#gophers", topic: "gogo gophergala!"}
-
-	// buses[gophers.name] = &EventBus{make(map[EventType][]*Subscriber), &gophers}
-	// fmt.Println("New Channel: " + buses[gophers.name].channel.name)
-	// sub := Subscriber{Nick: "a_client"}
-	// fmt.Println("New Subscriber: " + sub.Nick)
-
-	// b := buses["#gophers"]
-	// b.Subscribe(ChannelUserJoin, &sub)
-
-	// // e := Event{event_type: EventSay, event_data: "hello, world"}
-
-	// for i := 0; i < 10; i++ {
-	// 	s := Subscriber{Nick: fmt.Sprintf("client_%v", i)}
-	// 	b.Subscribe(ChannelUserJoin, &s)
-	// }
-	// e := Event{event_type: ChannelUserJoin, event_data: "Alvin has joined!"}
-	//b.Publish(&e)
-	// bus.Publish(&Event{event_type: EventLeave})
+	loadMessages()
 }
 func main() {
 	// init event bus map

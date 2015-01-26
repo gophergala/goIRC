@@ -23,10 +23,17 @@ type User struct {
 	RealName string
 	Conn     net.Conn
 	Status   ConnectionStatus
+	Host     string
+}
+
+func (u *User) getHead() string {
+	//return fmt.Sprintf(":%s!%s@%s", u.Nick, u.Ident, u.Host)
+	return fmt.Sprintf(":%s!%s@127.0.0.1", u.Nick, u.Ident)
 }
 
 func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 	client := User{Status: UserPassSent, Conn: conn}
+	//myIP := net.Conn.RemoteAddr().String()
 	reader := bufio.NewReader(conn)
 
 	commands := make(map[string]func(map[string]*EventBus, *User, string, string))
@@ -53,34 +60,47 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 			continue
 		} else if len(statLen) < 2 {
 			cmd := strings.SplitN(status, " ", 1)
+			cmd[0] = strings.ToUpper(cmd[0])
 			if _, ok := commands[cmd[0]]; ok {
 				commands[cmd[0]](buses, &client, "", "")
 			}
 		} else {
 			if client.Status < UserRegistered {
 				regCmd := strings.SplitN(status, " ", 2)
-
+				regCmd[0] = strings.ToUpper(regCmd[0])
+				fmt.Println("-" + regCmd[0] + "-" + regCmd[1])
 				switch regCmd[0] {
 				case "NICK":
 					//client.Nick = regCmd[1]
 					handleNick(buses, &client, regCmd[1], "")
 					client.Status = UserNickSent
 				case "USER":
+					fmt.Println("hit user case")
 					var uname, hname, sname, rname string
-					fmt.Sscanf(regCmd[1], "%q %q %q :%q", uname, hname, sname, rname) //TODO(jz) need to split on : in case real name has spaces
-					fmt.Println(hname + uname)                                        //just so we don't get the unused var error
-					client.Ident = uname
+					fmt.Sscanf(regCmd[1], "%s %s %s :%s", uname, hname, sname, rname) //TODO(jz) need to split on : in case real name has spaces
+					fmt.Println(hname + uname)
+					//client.Ident = uname
 					client.RealName = rname
 					client.Status = UserRegistered
-				case "PASS":
+					client.Ident = client.Nick
+					fmt.Println("username:" + client.Ident)
+					buses[client.Nick] = &EventBus{subscribers: make(map[EventType][]Subscriber), channel: nil}
+					buses[client.Nick].Subscribe(PrivMsg, &client)
+					sendWelcome(&client)
+				case "PASS": //need to remove this at some point!
 					client.Nick = regCmd[1]
 					client.Ident = regCmd[1]
 					client.RealName = regCmd[1]
+
+					buses[client.Nick] = &EventBus{subscribers: make(map[EventType][]Subscriber), channel: nil}
+					buses[client.Nick].Subscribe(PrivMsg, &client)
 					client.Status = UserRegistered
-					conn.Write([]byte("Welcome " + regCmd[1] + "\n"))
+					sendWelcome(&client)
+
+				//conn.Write([]byte("Welcome " + regCmd[1] + ")
 
 				default:
-					conn.Write([]byte("you must register first. try nick or user?\n"))
+					client.Write("you must register first. try nick or user?")
 				}
 
 			} else {
@@ -94,10 +114,10 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 				_, err = fmt.Sscanf(s[0], "%s %s", &cmd, &target)
 				if err != nil {
 					fmt.Println(err)
-					conn.Write([]byte("Invalid input! CHECK YOUR(self) SYNTAX\n"))
+					client.Write("Invalid input! CHECK YOUR(self) SYNTAX")
 					continue
 				}
-
+				cmd = strings.ToUpper(cmd)
 				if _, ok := commands[cmd]; ok {
 					commands[cmd](buses, &client, target, data)
 				}
@@ -108,10 +128,28 @@ func handleConnection(conn net.Conn, buses map[string]*EventBus) {
 
 func handlePart(buses map[string]*EventBus, client *User, target string, data string) {
 	message := fmt.Sprintf("%s parted %s!\n", client.Nick, target)
+	b, ok := buses[target]
+	if !ok {
+		client.Write("Channel does not exist")
+		return
+	}
+	_, ok = b.channel.mode[client.Nick]
+	if !ok {
+		client.Write("User not subscribed")
+		return
+	}
 	buses[target].Publish(&Event{event_type: UserPart, event_data: message})
+	delete(b.channel.mode, client.Nick)
+
 	buses[target].Unsubscribe(UserPart, client)
 	buses[target].Unsubscribe(UserJoin, client)
+	buses[target].Unsubscribe(Topic, client)
 	buses[target].Unsubscribe(PrivMsg, client)
+	// possibile race condition
+	if len(b.channel.mode) == 0 {
+		delete(buses, target)
+		fmt.Println(target + " closed")
+	}
 }
 
 func handleJoin(buses map[string]*EventBus, client *User, target string, data string) {
@@ -129,21 +167,33 @@ func handleJoin(buses map[string]*EventBus, client *User, target string, data st
 		b.Subscribe(UserPart, client)
 		b.Subscribe(PrivMsg, client)
 		b.Subscribe(Topic, client)
-		message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
+		//message := fmt.Sprintf("%s joined %s!\n", client.Nick, target)
+		message := fmt.Sprintf("%q JOIN %q", client.getHead(), target)
+		//send names
+		var names string
+		for _, val := range buses[target].subscribers[PrivMsg] {
+			names = names + " " + val.GetInfo()
+		}
+		client.Write(":" + HOST_STRING + " 332 " + client.Nick + " " + target + ":no topic set")
+		client.Write(":" + HOST_STRING + " 333 " + client.Nick + " " + target + " admin!admin@localhost 1419044230")
+		client.Write(":" + HOST_STRING + " 353 " + client.Nick + " " + target + " :" + names)
+		client.Write(":" + HOST_STRING + " 366 " + client.Nick + " * :END of /NAMES list.")
+		///end send names
 		b.Publish(&Event{UserJoin, message})
 	} else {
-		client.Conn.Write([]byte("User is already subscribed\n"))
+		client.Write("User is already subscribed")
 	}
 }
 func handleTopic(buses map[string]*EventBus, client *User, target string, data string) {
 	b, ok := buses[target]
 	if !ok {
-		client.Conn.Write([]byte("Channel does not exist\n"))
+		//sendError(client, ERR_UNKNOWNERROR)
+		client.Write("Channel does not exist")
 		return
 	}
 	_, ok = b.channel.mode[client.Nick]
 	if !ok {
-		client.Conn.Write([]byte("User not subscribed\n"))
+		client.Write("User not subscribed")
 		return
 	}
 	if len(data) > 0 {
@@ -152,54 +202,64 @@ func handleTopic(buses map[string]*EventBus, client *User, target string, data s
 		b.Publish(&Event{Topic, message})
 	} else {
 		message := fmt.Sprintf("%s\n", b.channel.topic)
-		client.Conn.Write([]byte(message))
+		client.Write(message)
 	}
 }
+
 func handleNick(buses map[string]*EventBus, client *User, target string, data string) {
 	client.Nick = target
-	client.Conn.Write([]byte("nick set to:" + client.Nick + "\n"))
+	client.Write("nick set to:" + client.Nick)
 }
 
 func handleMsg(buses map[string]*EventBus, client *User, target string, data string) {
 	b, ok := buses[target]
 	if !ok {
-		client.Conn.Write([]byte("Channel does not exist\n"))
+		client.Write("Channel does not exist")
 		return
 	}
-	_, ok = b.channel.mode[client.Nick]
-	if !ok {
-		client.Conn.Write([]byte("User not subscribed\n"))
-		return
+	if b.channel != nil { //hacky but works for now
+		_, ok = b.channel.mode[client.Nick]
+		if !ok {
+			client.Write("User not subscribed")
+			return
+		}
 	}
-	// implment check if client is subscribed to channel here
-	message := fmt.Sprintf("(%s)%s: %s\n", target, client.Nick, data)
+	// implement check if client is subscribed to channel here
+	message := fmt.Sprintf("%s PRIVMSG %s: %s\n", client.getHead(), target, data)
 	b.Publish(&Event{event_type: PrivMsg, event_data: message})
+	buses[client.Nick].Publish(&Event{event_type: PrivMsg, event_data: message})
 
 }
 
 //func handleList(conn net.Conn, buses map[string]*EventBus) {
 func handleList(buses map[string]*EventBus, client *User, target string, data string) {
 	if len(buses) == 0 {
-		client.Conn.Write([]byte("No Channels Exist\n"))
+		client.Write("No Channels Exist")
 	} else {
-		client.Conn.Write([]byte("Channels\n"))
+		client.Write("Channels")
 		for k, _ := range buses {
+<<<<<<< HEAD
 			if k[:1] == "#" {
 				client.Conn.Write([]byte(k))
 			}
 		}
 		client.Conn.Write([]byte("End of List\n"))
+=======
+			client.Write(k)
+		}
+		client.Write("")
+>>>>>>> aa4f7add8d5f998f5b9b242f39d4946acf03fc42
 	}
 }
 
 func handleHelp(buses map[string]*EventBus, client *User, target string, data string) {
 	k, ok := Help[target]
 	if !ok {
-		client.Conn.Write([]byte("Available Commands:\n"))
+		client.Write("\nAvailable Commands: (Enter HELP <command> for further details")
 		for h := range Help {
-			client.Conn.Write([]byte(h + "\n"))
+			client.Write(h)
 		}
 	} else {
-		client.Conn.Write([]byte("Summary: " + k.Summary + "\nUsage: " + k.Syntax + "\n"))
+		client.Write("Summary: " + k.Summary + "\r\nUsage: " + k.Syntax)
 	}
 }
