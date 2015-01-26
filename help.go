@@ -10,7 +10,7 @@ type HelpCommand struct {
 var Help = map[string]HelpCommand{
 	"JOIN": HelpCommand{
 		Summary: "join a new channel",
-		Syntax:  "JOIN <#channel>: <username>",
+		Syntax:  "JOIN <#channel>",
 	},
 	"PRIVMSG": HelpCommand{
 		Summary: "send a message to a channel",
