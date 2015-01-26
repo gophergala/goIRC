@@ -43,6 +43,7 @@ func loadMessages() {
 }
 
 func sendWelcome(user *User) {
+	user.Write("PING :" + HOST_STRING)
 	user.Write(":" + HOST_STRING + " NOTICE Auth :welcome!")
 	types := []int{RPL_WELCOME, RPL_CREATED, RPL_YOURHOST, RPL_MYINFO, RPL_ISUPPORT, RPL_YOURID, RPL_MOTDSTART, RPL_MOTD, RPL_ENDOFMOTD}
 
