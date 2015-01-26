@@ -5,7 +5,6 @@ import "fmt"
 var canned_responses map[int]string
 
 const HOST_STRING = "goirc.capitalonelabs.com"
-const FAILSILENTLYSWANDIVE = ""
 
 const (
 	ERR_NOSUCHCHANNEL int = iota
@@ -39,7 +38,7 @@ func loadMessages() {
 	canned_responses[ERR_NOSUCHCHANNEL] = "403 %s :no such channel"
 	canned_responses[ERR_CANNOTSENDTOCHAN] = "404 %s cannot send to channel"
 	for i, v := range canned_responses {
-		canned_responses[i] = ":" + HOST_STRING + fmt.Sprintf(v, HOST_STRING)
+		canned_responses[i] = ":" + HOST_STRING + v
 	}
 }
 
